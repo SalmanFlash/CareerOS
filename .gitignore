@@ -1,0 +1,16 @@
+.dart_tool/
+build/
+.flutter-plugins-dependencies
+client_secret*.json
+credentials.json
+*.dpapi
+*.dpapi.tmp
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.local/
+PROGRESS.md
