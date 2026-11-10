@@ -1,0 +1,52 @@
+name: Build and publish phone preview
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: careeros-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.repository == 'SalmanFlash/CareerOS' && github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/configure-pages@v5
+      - name: Install Flutter version used by the local preview
+        run: |
+          git clone --depth 1 --branch 3.38.1 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+      - name: Verify and build public frontend
+        run: |
+          flutter config --no-analytics
+          flutter pub get
+          flutter analyze
+          flutter test
+          node --test test/gmail.test.mjs test/offline.test.mjs
+          flutter build web --release --no-web-resources-cdn --no-wasm-dry-run --pwa-strategy none --base-href /CareerOS/ --dart-define=CAREEROS_HOSTED=true
+          node tool/offline.mjs
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/web
+          retention-days: 1
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

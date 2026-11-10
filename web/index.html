@@ -8,5 +8,13 @@
 <title>CareerOS</title><style>html,body{background:#080611;color:#f7f2ff;font:18px system-ui}#boot{position:absolute;inset:44% 0 auto;text-align:center}</style></head>
 <body><div id="boot">CareerOS</div><script>
 window.addEventListener('flutter-first-frame',()=>document.querySelector('#boot')?.remove());
-if ('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('offline.js').catch(console.warn));
+window.careerosOfflineStatus = 'loading';
+if ('serviceWorker' in navigator) window.addEventListener('load',async()=>{
+  try {
+    await navigator.serviceWorker.register('offline.js');
+    await navigator.serviceWorker.ready;
+    window.careerosOfflineStatus = 'ready';
+  } catch { window.careerosOfflineStatus = 'unavailable'; }
+});
+else window.careerosOfflineStatus = 'unavailable';
 </script><script src="flutter_bootstrap.js" async></script></body></html>

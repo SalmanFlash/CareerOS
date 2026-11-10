@@ -8,7 +8,10 @@
 | Greenhouse Job Board API | User-triggered public GET requests for five employer boards | No | No API key, account, application submission or private mission data. Requests time out after 12 seconds and failed boards retain their last successful timestamp. |
 | Local Gmail scanner | Read-only Gmail requests with the owner's Desktop app OAuth client | No billing is provisioned | Requires user setup and university permission. Runs every 15 minutes while the local service is on. Real account authorization remains unverified. |
 | Windows DPAPI | Encrypt local OAuth credentials and short mail excerpts | No | Bound to the current Windows account. Ciphertext is stored outside the repository and excluded from Git. |
+| GitHub Pages and standard public Actions runner | Build and serve the static phone preview | No | Public repository, standard Ubuntu runner, no paid services. Only compiled frontend assets are uploaded, retained for one day. Local Gmail service and data are excluded. |
 
 The public listing endpoints and authentication rules are documented in the [Greenhouse Job Board API](https://docs.greenhouse.io/job-board). Live availability depends on each employer keeping its board public.
+
+GitHub documents [Pages availability for public repositories on GitHub Free](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages) and [free standard runners in public repositories](https://docs.github.com/en/billing/concepts/product-billing/github-actions). The workflow is limited to this public repository and does not select larger runners or enable billing.
 
 The local build uses deterministic guidance and local email parsing. No paid model, analytics integration or paid fallback is configured. Independent Gmail requires the owner's OAuth configuration. Verify permissions and quota behavior against the actual account before treating the connection as ready.

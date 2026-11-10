@@ -20,6 +20,10 @@ external JSString? readStore(JSString key);
 external void writeStore(JSString key, JSString value);
 @JS('window.open')
 external void openSource(JSString url, JSString target, JSString features);
+@JS('careerosOfflineStatus')
+external JSString get shellStatus;
+
+const hosted = bool.fromEnvironment('CAREEROS_HOSTED');
 
 const ink = Color(0xff080611),
     surface = Color(0xff171024),
@@ -62,6 +66,7 @@ class _DeskState extends State<Desk> {
   String? focus;
   Map<String, dynamic>? gmail;
   bool gmailLoading = false, gmailOffline = false;
+  String offlineStatus = 'loading';
   String t(String ur, String en) => plan.english ? en : ur;
   String word(Words pair) => t(pair.$1, pair.$2);
   @override
@@ -89,7 +94,13 @@ class _DeskState extends State<Desk> {
     }
     clock = Timer.periodic(const Duration(seconds: 30), (_) {
       final date = dayAt(DateTime.now());
-      if (date != today) setState(() => today = date);
+      final shell = shellStatus.toDart;
+      if (date != today || shell != offlineStatus) {
+        setState(() {
+          today = date;
+          offlineStatus = shell;
+        });
+      }
       refreshGmail();
     });
     refreshGmail();
@@ -795,6 +806,7 @@ class _DeskState extends State<Desk> {
       ]),
   ];
   Future<void> refreshGmail() async {
+    if (hosted) return;
     if (gmailLoading) return;
     gmailLoading = true;
     try {
@@ -842,45 +854,57 @@ class _DeskState extends State<Desk> {
     'noopener,noreferrer'.toJS,
   );
   List<Widget> gmailSettings() => [
-    panel([
-      eyebrow('FAST Gmail'),
-      Text(
-        t(
-          'Independent email sync har 15 minute. Laptop aur CareerOS service chalni chahiye.',
-          'Independent email sync every 15 minutes. Keep this laptop and the CareerOS service running.',
-        ),
-      ),
-      if (gmailOffline)
+    if (hosted)
+      panel([
+        eyebrow('FAST Gmail'),
         Text(
           t(
-            'Local Gmail service se rabta nahi ho saka. CareerOS launcher dobara kholo.',
-            'Cannot reach the local Gmail service. Restart the CareerOS launcher.',
+            'Automatic Gmail filhaal Windows CareerOS par chalta hai. Is phone/web version mein inbox sync nahi hai. Laptop ke missions bhi yahan khud nahi aate.',
+            'Automatic Gmail currently runs in Windows CareerOS. This phone/web version has no inbox sync, and laptop missions do not transfer automatically.',
           ),
         ),
-      if (gmail?['storageError'] == true)
+      ])
+    else
+      panel([
+        eyebrow('FAST Gmail'),
         Text(
           t(
-            'Encrypted storage nahi khul saka. Sync ruka hua hai.',
-            'Encrypted storage is unavailable. Sync is paused.',
+            'Independent email sync har 15 minute. Laptop aur CareerOS service chalni chahiye.',
+            'Independent email sync every 15 minutes. Keep this laptop and the CareerOS service running.',
           ),
         ),
-      if (gmail?['scanning'] == true)
-        Text(t('Email check ho rahi hai…', 'Checking email…')),
-      for (final account in (gmail?['accounts'] as List? ?? []))
-        Text(
-          'FAST ${account['campus']} · ${gmailState(account['status'])}' +
-              (account['email'] == '' ? '' : '\n${account['email']}') +
-              (account['lastSuccess'] == ''
-                  ? ''
-                  : '\n' +
-                        t('Aakhri check ', 'Last checked ') +
-                        pkt(DateTime.parse(account['lastSuccess'])) +
-                        ' PKT'),
-        ),
-      button(t('Gmail setup kholo', 'Open Gmail setup'), openGmailSetup),
-    ]),
+        if (gmailOffline)
+          Text(
+            t(
+              'Local Gmail service se rabta nahi ho saka. CareerOS launcher dobara kholo.',
+              'Cannot reach the local Gmail service. Restart the CareerOS launcher.',
+            ),
+          ),
+        if (gmail?['storageError'] == true)
+          Text(
+            t(
+              'Encrypted storage nahi khul saka. Sync ruka hua hai.',
+              'Encrypted storage is unavailable. Sync is paused.',
+            ),
+          ),
+        if (gmail?['scanning'] == true)
+          Text(t('Email check ho rahi hai…', 'Checking email…')),
+        for (final account in (gmail?['accounts'] as List? ?? []))
+          Text(
+            'FAST ${account['campus']} · ${gmailState(account['status'])}' +
+                (account['email'] == '' ? '' : '\n${account['email']}') +
+                (account['lastSuccess'] == ''
+                    ? ''
+                    : '\n' +
+                          t('Aakhri check ', 'Last checked ') +
+                          pkt(DateTime.parse(account['lastSuccess'])) +
+                          ' PKT'),
+          ),
+        button(t('Gmail setup kholo', 'Open Gmail setup'), openGmailSetup),
+      ]),
   ];
   List<Widget> gmailCards() {
+    if (hosted) return [];
     if (gmail == null || gmail?['ready'] != true)
       return [
         panel([
@@ -1121,6 +1145,33 @@ class _DeskState extends State<Desk> {
     eyebrow('CareerOS'),
     heading('Settings'),
     const SizedBox(height: 18),
+    panel([
+      titleText(t('App aur offline access', 'App and offline access')),
+      Text(
+        shellStatus.toDart == 'ready'
+            ? t(
+                'Offline app save ho gayi hai. Isi browser ya installed app mein dobara khol sakte ho.',
+                'The offline app is saved. Reopen it in this browser or the installed app.',
+              )
+            : t(
+                'Offline app abhi tayyar nahi. Internet on rakh kar thori dair baad yahan check karo.',
+                'The offline app is not ready yet. Stay online and check here again shortly.',
+              ),
+      ),
+      if (hosted)
+        Text(
+          t(
+            'Android: Chrome menu se Install app ya Add to Home screen. iPhone: Safari mein Share → Add to Home Screen. Pehli baar khol kar offline status tayyar hone do.',
+            'Android: use Chrome’s Install app or Add to Home screen menu. iPhone: in Safari, use Share → Add to Home Screen. Open it once and wait for offline readiness.',
+          ),
+        ),
+      Text(
+        t(
+          'Email aur naye mauqay check karne ke liye internet chahiye. Missions aur notes offline chal sakte hain.',
+          'Checking email and new opportunities needs internet. Missions and notes can work offline.',
+        ),
+      ),
+    ]),
     ...gmailSettings(),
     panel([
       titleText(t('Zabaan', 'Language')),
@@ -1157,8 +1208,8 @@ class _DeskState extends State<Desk> {
       titleText(t('Is device ka workspace', 'Device workspace')),
       Text(
         t(
-          'Missions aur notes is browser mein save hain. Gmail ki connection details is laptop par Windows encryption se mehfooz hain.',
-          'Missions and notes are saved in this browser. Gmail credentials are protected by Windows encryption on this laptop.',
+          'Missions aur notes sirf is browser mein save hain. Browser data clear karne se record mit sakta hai. Devices ke darmiyan automatic sync abhi nahi hai.',
+          'Missions and notes are saved only in this browser. Clearing browser data can erase the record. Automatic sync between devices is not available yet.',
         ),
       ),
     ]),

@@ -1,6 +1,6 @@
 # CareerOS
 
-**Work in progress.** The local planner and public internship search have been tested. Independent Gmail OAuth and scanning have automated regression coverage, including Windows credential encryption. Real Google authorization and mailbox scanning still need verification with the user's configured client. Phone deployment and device sync are pending.
+**Work in progress.** The local planner and public internship search have been tested. Independent Gmail OAuth and scanning have automated regression coverage, including Windows credential encryption. Real Google authorization and mailbox scanning still need verification with the user's configured client. A separate static phone preview is built by GitHub Actions; physical-phone installation and device sync remain unverified.
 
 Personal Flutter Web career planner. The first milestone runs entirely on your device. It needs no sign-in, API key, billing account or hosted service.
 
@@ -37,13 +37,15 @@ node tool/offline.mjs
 node tool/serve.mjs
 ```
 
-The offline packaging step versions the cache from the compiled files and includes the Flutter renderer. Serve the contents of build/web at the root of the site. Updates take effect after the previous windows close.
+The offline packaging step versions the cache from the compiled files and includes the Flutter renderer. Serve the default contents of build/web at the root of the site. Updates take effect after the previous windows close. Settings reports when the offline shell is available.
 
 The November 10 local audit passed 13 Gmail regression tests, including actual Windows DPAPI encryption, nine Dart tests, and an offline-routing regression. The rebuilt app was checked in isolated Chrome at phone and desktop viewport sizes, including bilingual setup, OAuth route bypass of the service worker, offline reload, and a synthetic-notice deadline/mission flow. Google responses in scanner tests are fixtures; these checks do not establish real mailbox access or installation on a phone.
 
 ## Installation and scope
 
-On Windows, open the preview in Edge or Chrome and use the browser's install-app action if offered. For an iPhone, the build needs a reachable HTTPS deployment. Open that URL in Safari and select Share → Add to Home Screen. A laptop's loopback address only works on that laptop. Real-device iPhone installation and push are pending.
+On Windows, open the preview in Edge or Chrome and use the browser's install-app action if offered. The phone-preview workflow targets **https://salmanflash.github.io/CareerOS/**. After a successful Pages deployment, open that URL in Android Chrome and use Install app / Add to Home screen, or in iPhone Safari use Share → Add to Home Screen. Open the installed app online once and check Settings for offline readiness before disconnecting. Real-device installation and push notifications are still unverified.
+
+The hosted preview uses `--base-href /CareerOS/ --dart-define=CAREEROS_HOSTED=true`. It contains no Node server, OAuth client, tokens or user data, and does not call Gmail endpoints. Gmail automation is available only in the Windows local service. Missions, language and notes are saved separately in each browser/device; there is no automatic transfer between the localhost and hosted previews. The PWA was exercised at a phone viewport with a real offline reload and mission completion, which is not a physical-phone installation test.
 
 Under **Mauqay → Abhi check karo** (Opportunities → Check now), the browser reads published roles from the Greenhouse boards for Careem, Motive, Canonical, Cloudflare and Databricks. Results cover technical internships and co-ops identified by title. Search by role, employer or location, or turn on the Pakistan location filter. Location is a geographic signal only. Verify personal eligibility, deadlines and authorization requirements in the linked employer posting.
 

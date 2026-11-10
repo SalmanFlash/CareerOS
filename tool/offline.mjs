@@ -1,7 +1,7 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join, relative, sep } from 'node:path';
-const root = 'build/web';
+const root = process.argv[2] ?? 'build/web';
 const files = [];
 async function walk(dir) {
   for (const entry of await readdir(dir, {withFileTypes:true})) {
