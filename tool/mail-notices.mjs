@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 
-const relevant = /\b(deadline|due|submit|submission|assignment|quiz|exam|midterm|final|class|lecture|schedule|registration|register|enroll|internship|scholarship|hackathon|competition|fellowship|workshop|career|research|material|announcement)\b/i;
+const relevant = /\b(deadlines?|due|submit|submissions?|assignments?|quiz(?:zes)?|exams?|midterms?|finals?|class(?:es)?|lectures?|schedule|registrations?|register|enroll|internships?|scholarships?|hackathons?|competitions?|fellowships?|workshops?|careers?|research|materials?|announcements?)\b/i;
 
 function plainBody(part) {
   if (part.mimeType === 'text/plain' && part.body?.data) return Buffer.from(part.body.data,'base64url').toString('utf8');
@@ -45,11 +45,12 @@ export function extractNotice(message, campus, email) {
   const subject=headers.subject??'';
   const sender=headers.from??'';
   // Only university domains and Classroom notifications enter this feed.
-  if(!/@(?:[a-z0-9-]+\.)*nu\.edu\.pk(?:[>\s]|$)/i.test(sender)&&!/@classroom\.google\.com(?:[>\s]|$)/i.test(sender))return null;
+  const address=sender.match(/<([^<>]+)>\s*$/)?.[1]??sender.trim();
+  if(!/^[^\s<>@]+@(?:[a-z0-9-]+\.)*nu\.edu\.pk$/i.test(address)&&!/^no-reply@classroom\.google\.com$/i.test(address))return null;
   const body=(plainBody(message.payload??{})||htmlBody(message.payload??{})||message.snippet||'').slice(0,24000);
   if(!relevant.test(subject+' '+body))return null;
   const timestamp=Number(message.internalDate);
-  if(!message.id||!Number.isFinite(timestamp))return null;
+  if(!/^[0-9a-f]{1,64}$/i.test(message.id??'')||Number.isNaN(new Date(timestamp).valueOf()))return null;
   const received=new Date(timestamp).toISOString();
   const deadline=deadlineCandidate(subject+'\n'+body);
   const excerpt=body.replace(/\s+/g,' ').trim().slice(0,500);

@@ -6,7 +6,9 @@
 | Node.js | Local preview and offline packaging | No | Preview server binds to 127.0.0.1. |
 | Browser storage and service worker | Missions, preferences and offline shell | No | Saved in the current profile. Storage availability and retention depend on browser settings. |
 | Greenhouse Job Board API | User-triggered public GET requests for five employer boards | No | No API key, account, application submission or private mission data. Requests time out after 12 seconds and failed boards retain their last successful timestamp. |
+| Local Gmail scanner | Read-only Gmail requests with the owner's Desktop app OAuth client | No billing is provisioned | Requires user setup and university permission. Runs every 15 minutes while the local service is on. Real account authorization remains unverified. |
+| Windows DPAPI | Encrypt local OAuth credentials and short mail excerpts | No | Bound to the current Windows account. Ciphertext is stored outside the repository and excluded from Git. |
 
 The public listing endpoints and authentication rules are documented in the [Greenhouse Job Board API](https://docs.greenhouse.io/job-board). Live availability depends on each employer keeping its board public.
 
-The local build uses deterministic guidance. No hosted backend, paid model, account credential, analytics integration or paid fallback is configured. Verify pricing, permissions, quota limits and failure behavior separately before connecting any provider.
+The local build uses deterministic guidance and local email parsing. No paid model, analytics integration or paid fallback is configured. Independent Gmail requires the owner's OAuth configuration. Verify permissions and quota behavior against the actual account before treating the connection as ready.

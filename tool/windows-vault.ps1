@@ -1,5 +1,7 @@
 param([ValidateSet('protect','unprotect')][string]$Operation)
 $ErrorActionPreference = 'Stop'
+[Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 Add-Type -AssemblyName System.Security
 $inputText = [Console]::In.ReadToEnd()
 $scope = [Security.Cryptography.DataProtectionScope]::CurrentUser

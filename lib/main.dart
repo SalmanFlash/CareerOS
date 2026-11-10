@@ -60,8 +60,8 @@ class _DeskState extends State<Desk> {
   late String today;
   Timer? clock;
   String? focus;
-  Map<String,dynamic>? gmail;
-  bool gmailLoading=false, gmailOffline=false;
+  Map<String, dynamic>? gmail;
+  bool gmailLoading = false, gmailOffline = false;
   String t(String ur, String en) => plan.english ? en : ur;
   String word(Words pair) => t(pair.$1, pair.$2);
   @override
@@ -355,25 +355,35 @@ class _DeskState extends State<Desk> {
             ],
           ),
         ], accent: i == 0),
-      ExpansionTile(title:Text(t('Notice khud add karo (optional)','Add a notice manually (optional)')),children:[panel([
-        eyebrow('FAST'),
-        titleText(
+      ExpansionTile(
+        title: Text(
           t(
-            'University ki email se kaam save karo',
-            'Save an action from university email',
+            'Notice khud add karo (optional)',
+            'Add a notice manually (optional)',
           ),
         ),
-        Text(
-          t(
-            'Email ka subject aur apna agla kaam likho. Agar deadline di hai toh woh bhi save karo.',
-            'Enter the subject and the action you need to take. Add the deadline if the notice gives one.',
-          ),
-        ),
-        link(
-          t('FAST notice add karo', 'Add FAST notice'),
-          () => universityNotice(),
-        ),
-      ])]),
+        children: [
+          panel([
+            eyebrow('FAST'),
+            titleText(
+              t(
+                'University ki email se kaam save karo',
+                'Save an action from university email',
+              ),
+            ),
+            Text(
+              t(
+                'Email ka subject aur apna agla kaam likho. Agar deadline di hai toh woh bhi save karo.',
+                'Enter the subject and the action you need to take. Add the deadline if the notice gives one.',
+              ),
+            ),
+            link(
+              t('FAST notice add karo', 'Add FAST notice'),
+              () => universityNotice(),
+            ),
+          ]),
+        ],
+      ),
       Text(
         t('Is device par save hota hai.', 'Saved on this device.'),
         style: const TextStyle(color: Colors.white60),
@@ -668,11 +678,21 @@ class _DeskState extends State<Desk> {
     eyebrow((m.demo ? 'DEMO   /   ' : '') + t('Focus mode', 'Focus mode')),
     heading(word(m.label)),
     if (m.campus.isNotEmpty) universitySource(m),
-    if(m.suggestedDeadline.isNotEmpty && m.deadline!=m.suggestedDeadline) panel([
-      Text(t('Email se mumkin deadline mili hai. Asli email dekh kar tasdeeq karo.','A possible deadline was found in the email. Confirm it against the original message.')),
-      Text(m.suggestedDeadline),Text(m.deadlineEvidence),
-      button(t('Tareekh confirm karo','Confirm date'),()=>change(()=>m.deadline=m.suggestedDeadline))
-    ]),
+    if (m.suggestedDeadline.isNotEmpty && m.deadline != m.suggestedDeadline)
+      panel([
+        Text(
+          t(
+            'Email se mumkin deadline mili hai. Asli email dekh kar tasdeeq karo.',
+            'A possible deadline was found in the email. Confirm it against the original message.',
+          ),
+        ),
+        Text(m.suggestedDeadline),
+        Text(m.deadlineEvidence),
+        button(
+          t('Tareekh confirm karo', 'Confirm date'),
+          () => change(() => m.deadline = m.suggestedDeadline),
+        ),
+      ]),
     const SizedBox(height: 18),
     panel([
       eyebrow(t('Step', 'Step') + ' ${m.step + 1} / ${m.steps.length}'),
@@ -680,7 +700,9 @@ class _DeskState extends State<Desk> {
       titleText(word(m.steps[m.step])),
       if (m.url.isNotEmpty)
         link(
-          m.campus.isEmpty?t('Asli listing kholo', 'Open original listing'):t('Asli email kholo','Open original email'),
+          m.campus.isEmpty
+              ? t('Asli listing kholo', 'Open original listing')
+              : t('Asli email kholo', 'Open original email'),
           () =>
               openSource(m.url.toJS, '_blank'.toJS, 'noopener,noreferrer'.toJS),
         ),
@@ -773,76 +795,200 @@ class _DeskState extends State<Desk> {
       ]),
   ];
   Future<void> refreshGmail() async {
-    if(gmailLoading)return;
-    gmailLoading=true;
-    try{
-      final options={'headers':{'X-CareerOS':'1'},'cache':'no-store','signal':requestTimeout(10000)}.jsify() as JSObject;
-      final response=await fetchBoard('/api/gmail'.toJS,options).toDart;
-      if(!response.ok)throw const FormatException();
-      final data=jsonDecode((await response.text().toDart).toDart) as Map<String,dynamic>;
-      if(mounted)setState((){gmail=data;gmailOffline=false;});
-    }catch(_){if(mounted)setState(()=>gmailOffline=true);}
-    finally{gmailLoading=false;}
+    if (gmailLoading) return;
+    gmailLoading = true;
+    try {
+      final options =
+          {
+                'headers': {'X-CareerOS': '1'},
+                'cache': 'no-store',
+                'signal': requestTimeout(10000),
+              }.jsify()
+              as JSObject;
+      final response = await fetchBoard('/api/gmail'.toJS, options).toDart;
+      if (!response.ok) throw const FormatException();
+      final data =
+          jsonDecode((await response.text().toDart).toDart)
+              as Map<String, dynamic>;
+      if (mounted)
+        setState(() {
+          gmail = data;
+          gmailOffline = false;
+        });
+    } catch (_) {
+      if (mounted) setState(() => gmailOffline = true);
+    } finally {
+      gmailLoading = false;
+    }
   }
-  String gmailState(String value)=>switch(value){
-    'connected'=>t('Connected','Connected'),
-    'reconnect_required'=>t('Dobara Google sign-in karo','Google sign-in needed'),
-    'sync_failed'=>t('Aakhri scan fail hua','Last scan failed'),
-    'partial'=>t('Purani emails ka scan jaari hai','Catching up on older emails'),
-    _=>t('Connect karna baqi hai','Not connected'),
+
+  String gmailState(String value) => switch (value) {
+    'connected' => t('Connected', 'Connected'),
+    'reconnect_required' => t(
+      'Dobara Google sign-in karo',
+      'Google sign-in needed',
+    ),
+    'sync_failed' => t('Aakhri scan fail hua', 'Last scan failed'),
+    'partial' => t(
+      'Purani emails ka scan jaari hai',
+      'Catching up on older emails',
+    ),
+    _ => t('Connect karna baqi hai', 'Not connected'),
   };
-  void openGmailSetup()=>openSource('http://127.0.0.1:4173/gmail/setup'.toJS,'_blank'.toJS,'noopener,noreferrer'.toJS);
-  List<Widget> gmailSettings()=>[
+  void openGmailSetup() => openSource(
+    ('http://127.0.0.1:4173/gmail/setup?lang=' + (plan.english ? 'en' : 'ur'))
+        .toJS,
+    '_blank'.toJS,
+    'noopener,noreferrer'.toJS,
+  );
+  List<Widget> gmailSettings() => [
     panel([
       eyebrow('FAST Gmail'),
-      Text(t('Independent email sync har 15 minute. Laptop aur CareerOS service chalni chahiye.','Independent email sync every 15 minutes. Keep this laptop and the CareerOS service running.')),
-      if(gmailOffline)Text(t('Local Gmail service se rabta nahi ho saka. CareerOS launcher dobara kholo.','Cannot reach the local Gmail service. Restart the CareerOS launcher.')),
-      if(gmail?['storageError']==true)Text(t('Encrypted storage nahi khul saka. Sync ruka hua hai.','Encrypted storage is unavailable. Sync is paused.')),
-      if(gmail?['scanning']==true)Text(t('Email check ho rahi hai…','Checking email…')),
-      for(final account in (gmail?['accounts'] as List? ?? []))Text('FAST ${account['campus']} · ${gmailState(account['status'])}'+
-        (account['email']==''?'':'\n${account['email']}')+
-        (account['lastSuccess']==''?'':'\n'+t('Aakhri check ','Last checked ')+pkt(DateTime.parse(account['lastSuccess']))+' PKT')),
-      button(t('Gmail setup kholo','Open Gmail setup'),openGmailSetup),
-    ])
+      Text(
+        t(
+          'Independent email sync har 15 minute. Laptop aur CareerOS service chalni chahiye.',
+          'Independent email sync every 15 minutes. Keep this laptop and the CareerOS service running.',
+        ),
+      ),
+      if (gmailOffline)
+        Text(
+          t(
+            'Local Gmail service se rabta nahi ho saka. CareerOS launcher dobara kholo.',
+            'Cannot reach the local Gmail service. Restart the CareerOS launcher.',
+          ),
+        ),
+      if (gmail?['storageError'] == true)
+        Text(
+          t(
+            'Encrypted storage nahi khul saka. Sync ruka hua hai.',
+            'Encrypted storage is unavailable. Sync is paused.',
+          ),
+        ),
+      if (gmail?['scanning'] == true)
+        Text(t('Email check ho rahi hai…', 'Checking email…')),
+      for (final account in (gmail?['accounts'] as List? ?? []))
+        Text(
+          'FAST ${account['campus']} · ${gmailState(account['status'])}' +
+              (account['email'] == '' ? '' : '\n${account['email']}') +
+              (account['lastSuccess'] == ''
+                  ? ''
+                  : '\n' +
+                        t('Aakhri check ', 'Last checked ') +
+                        pkt(DateTime.parse(account['lastSuccess'])) +
+                        ' PKT'),
+        ),
+      button(t('Gmail setup kholo', 'Open Gmail setup'), openGmailSetup),
+    ]),
   ];
-  List<Widget> gmailCards(){
-    if(gmail==null||gmail?['ready']!=true)return [
-      panel([eyebrow('FAST Gmail'),Text(t('Google connect karne ke baad university updates yahan khud aayengi.','University updates will appear here automatically after you connect Google.')),
-        link(t('Gmail connect karo','Connect Gmail'),openGmailSetup)])
-    ];
-    final source=(gmail?['notices'] as List? ?? []);
-    final fingerprints=<String>{},threads=<String>{};
-    final notices=<Map>[];
-    for(final item in source.whereType<Map>()){
-      final thread='${item['campus']}/${item['threadId']}';
-      if(threads.contains(thread)||fingerprints.contains(item['fingerprint']))continue;
-      threads.add(thread);fingerprints.add(item['fingerprint']);
+  List<Widget> gmailCards() {
+    if (gmail == null || gmail?['ready'] != true)
+      return [
+        panel([
+          eyebrow('FAST Gmail'),
+          Text(
+            t(
+              'Google connect karne ke baad university updates yahan khud aayengi.',
+              'University updates will appear here automatically after you connect Google.',
+            ),
+          ),
+          link(t('Gmail connect karo', 'Connect Gmail'), openGmailSetup),
+        ]),
+      ];
+    final source = (gmail?['notices'] as List? ?? []);
+    final fingerprints = <String>{}, threads = <String>{};
+    final notices = <Map>[];
+    for (final item in source.whereType<Map>()) {
+      final thread = '${item['campus']}/${item['threadId']}';
+      if (threads.contains(thread) ||
+          fingerprints.contains(item['fingerprint']))
+        continue;
+      threads.add(thread);
+      fingerprints.add(item['fingerprint']);
       notices.add(item);
     }
-    return [ExpansionTile(initiallyExpanded:notices.isNotEmpty,title:Text(t('FAST ki automatic updates','Automatic FAST updates')),
-      subtitle:Text(gmailOffline?t('Service offline · purana data','Service offline · cached data'):t('${notices.length} notices · har 15 min sync','${notices.length} notices · sync every 15 min')),
-      children:[
-        if(notices.isEmpty)Padding(padding:const EdgeInsets.all(16),child:Text(t('Settings mein campus connection aur last scan dekho.','Check the campus connection and last scan in Settings.'))),
-        for(final notice in notices.take(20))panel([
-          eyebrow('FAST ${notice['campus']}'),titleText(notice['subject']),
-          Text(notice['excerpt']),Text(pkt(DateTime.parse(notice['received']))+' PKT'),
-          if(notice['deadline']!='')Text(t('Mumkin deadline (verify karo) ','Possible deadline (verify) ')+notice['deadline']),
-          Wrap(children:[link(t('Asli email kholo','Open original email'),()=>openSource((notice['url'] as String).toJS,'_blank'.toJS,'noopener,noreferrer'.toJS)),
-            if(plan.find(notice['id'])==null)button(t('Mere saath karo','Do it with me'),(){
-              final m=Mission(notice['id'],today,title:notice['subject'],subject:notice['subject'],campus:notice['campus'],url:notice['url'],
-                suggestedDeadline:notice['deadline'],deadlineEvidence:notice['deadlineEvidence'],note:notice['excerpt']);
-              add(m);change((){m.state='running';focus=m.id;});
-            })else link(t('Progress dekho','View progress'),()=>go(3))
-          ])
-        ])
-      ])
+    return [
+      ExpansionTile(
+        initiallyExpanded: notices.isNotEmpty,
+        title: Text(t('FAST ki automatic updates', 'Automatic FAST updates')),
+        subtitle: Text(
+          gmailOffline
+              ? t(
+                  'Service offline · purana data',
+                  'Service offline · cached data',
+                )
+              : t(
+                  '${notices.length} notices · har 15 min sync',
+                  '${notices.length} notices · sync every 15 min',
+                ),
+        ),
+        children: [
+          if (notices.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                t(
+                  'Settings mein campus connection aur last scan dekho.',
+                  'Check the campus connection and last scan in Settings.',
+                ),
+              ),
+            ),
+          for (final notice in notices.take(20))
+            panel([
+              eyebrow('FAST ${notice['campus']}'),
+              titleText(notice['subject']),
+              Text(notice['excerpt']),
+              Text(pkt(DateTime.parse(notice['received'])) + ' PKT'),
+              if (notice['deadline'] != '')
+                Text(
+                  t(
+                        'Mumkin deadline (verify karo) ',
+                        'Possible deadline (verify) ',
+                      ) +
+                      notice['deadline'],
+                ),
+              Wrap(
+                children: [
+                  link(
+                    t('Asli email kholo', 'Open original email'),
+                    () => openSource(
+                      (notice['url'] as String).toJS,
+                      '_blank'.toJS,
+                      'noopener,noreferrer'.toJS,
+                    ),
+                  ),
+                  if (plan.find(notice['id']) == null)
+                    button(t('Mere saath karo', 'Do it with me'), () {
+                      final m = Mission(
+                        notice['id'],
+                        today,
+                        title: notice['subject'],
+                        subject: notice['subject'],
+                        campus: notice['campus'],
+                        url: notice['url'],
+                        suggestedDeadline: notice['deadline'],
+                        deadlineEvidence: notice['deadlineEvidence'],
+                        note: notice['excerpt'],
+                      );
+                      add(m);
+                      change(() {
+                        m.state = 'running';
+                        focus = m.id;
+                      });
+                    })
+                  else
+                    link(t('Progress dekho', 'View progress'), () => go(3)),
+                ],
+              ),
+            ]),
+        ],
+      ),
     ];
   }
 
   Widget universitySource(Mission m) => Text(
     'FAST ${m.campus}   ·   ${m.subject}\n' +
         (m.deadline.isEmpty
-            ? t('Deadline nahi di gayi', 'No deadline provided')
+            ? t('Deadline confirm nahi hai', 'Deadline not confirmed')
             : 'Deadline: ${m.deadline} (PKT)'),
   );
 

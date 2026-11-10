@@ -1,6 +1,6 @@
 # CareerOS
 
-**Work in progress.** The local planner and public internship search have been tested. Independent Gmail OAuth, background scanning and its UI are under development and still need integration testing and real account authorization. Phone deployment and device sync are pending.
+**Work in progress.** The local planner and public internship search have been tested. Independent Gmail OAuth and scanning have automated regression coverage, including Windows credential encryption. Real Google authorization and mailbox scanning still need verification with the user's configured client. Phone deployment and device sync are pending.
 
 Personal Flutter Web career planner. The first milestone runs entirely on your device. It needs no sign-in, API key, billing account or hosted service.
 
@@ -14,6 +14,14 @@ The controls at the top right switch between Roman Urdu and English and enable E
 
 In **Aaj → FAST notice add karo**, choose the Karachi or Lahore inbox, enter the email subject and required action, and optionally enter the stated deadline as YYYY-MM-DD (Pakistan time). This manual workflow stores those fields in your browser. Active notices due by tomorrow take priority over routine tasks, including in Exam Mode. Use Progress → Edit notice to correct a date or action. Postponing changes the planned day while preserving the original deadline.
 
+## Independent Gmail connection
+
+Open **Settings → Open Gmail setup** in Edge or Chrome on Windows. Follow the linked Google guide to enable Gmail API, add both university addresses as test users and download a Desktop app OAuth client JSON. Select that file on the local setup page and authorize Karachi and Lahore individually. Google Workspace policy can prevent access, and testing-mode consent may require reconnecting.
+
+The local service checks connected accounts on startup and every 15 minutes while it is running. It requests read-only Gmail permission and filters university and Classroom messages. It stores short excerpts, source links and possible deadlines in Windows DPAPI-encrypted storage under the current user's LocalAppData CareerOS folder. Private messages are processed locally. Candidate deadlines require confirmation against the original email. The browser displays the latest result every 30 seconds.
+
+Stopping the laptop or local service stops scanning. OAuth credentials remain in the Windows account's encrypted store. The Google setup page and Gmail API routes are loopback-only. This backend must stay private to the laptop. Disconnecting a campus removes its credentials and cached notices from the service. Previously created missions remain in the browser.
+
 ## Rebuild
 
 Use Flutter 3.38.1 (Dart 3.10) or a compatible version, plus Node.js 20 or newer.
@@ -22,12 +30,16 @@ Use Flutter 3.38.1 (Dart 3.10) or a compatible version, plus Node.js 20 or newer
 flutter pub get
 flutter analyze
 flutter test
+node --test test/gmail.test.mjs
+node --test test/offline.test.mjs
 flutter build web --release --no-web-resources-cdn --pwa-strategy none
 node tool/offline.mjs
 node tool/serve.mjs
 ```
 
 The offline packaging step versions the cache from the compiled files and includes the Flutter renderer. Serve the contents of build/web at the root of the site. Updates take effect after the previous windows close.
+
+The November 10 local audit passed 13 Gmail regression tests, including actual Windows DPAPI encryption, nine Dart tests, and an offline-routing regression. The rebuilt app was checked in isolated Chrome at phone and desktop viewport sizes, including bilingual setup, OAuth route bypass of the service worker, offline reload, and a synthetic-notice deadline/mission flow. Google responses in scanner tests are fixtures; these checks do not establish real mailbox access or installation on a phone.
 
 ## Installation and scope
 

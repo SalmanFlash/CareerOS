@@ -26,7 +26,11 @@ self.addEventListener('activate', event => event.waitUntil((async()=>{
   await self.clients.claim();
 })()));
 self.addEventListener('fetch', event => {
-  if(event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
+  const url = new URL(event.request.url);
+  // OAuth callbacks and private API/setup routes must always reach the server.
+  // Serving the app shell here would swallow the authorization callback.
+  if(event.request.method !== 'GET' || url.origin !== self.location.origin ||
+      url.pathname.startsWith('/api/') || url.pathname.startsWith('/gmail/')) return;
   event.respondWith((async()=>{
     const cache = await caches.open(current);
     return await cache.match(event.request.mode === 'navigate' ? 'index.html' : event.request, {ignoreSearch:true}) || fetch(event.request);
