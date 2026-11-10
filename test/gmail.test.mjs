@@ -188,6 +188,35 @@ test('disconnection during scanning cannot restore cached messages',async t=>{
   assert.equal(f.service.status().accounts[0].status,'not_connected');
 });
 
+test('a rejected access token is refreshed once and the same request is retried',async t=>{
+  let details=0;
+  const f=await fixture(t,{seed:{version:1,client:{},accounts:{Karachi:seedAccount()},notices:[]},handler:async url=>{
+    if(url.includes('/messages/')&&++details===1){const error=Error('reconnect_required');error.status=401;throw error;}
+  }});
+  await f.service.scan();
+  assert.equal(details,2);
+  assert.equal(f.calls.filter(c=>c.url.includes('/token')).length,1);
+  assert.equal(f.service.status().notices.length,1);
+  assert.equal(f.service.status().accounts[0].status,'connected');
+});
+
+test('an expired pagination cursor resets safely; a repeating cursor fails without hanging',async t=>{
+  const account={...seedAccount(),nextPage:'expired',scanQuery:'original',scanStarted:new Date(initialTime).toISOString()};
+  let repeating=false;
+  const f=await fixture(t,{seed:{version:1,client:{},accounts:{Karachi:account},notices:[]},handler:async url=>{
+    if(url.includes('pageToken=expired')){const error=Error('sync_failed');error.status=400;throw error;}
+    if(repeating&&url.includes('/messages?'))return {messages:[],nextPageToken:'same'};
+  }});
+  await f.service.scan();
+  assert.equal(f.service.status().accounts[0].status,'sync_failed');
+  f.advance();await f.service.scan();
+  assert.equal(f.service.status().accounts[0].status,'connected');
+  assert.equal(f.service.status().notices.length,1);
+  repeating=true;f.advance();await f.service.scan();
+  assert.equal(f.service.status().accounts[0].status,'sync_failed');
+  assert.equal(f.service.status().notices.length,1);
+});
+
 test('capped scans resume the original query and retain the first scan watermark',async t=>{
   const f=await fixture(t,{seed:{version:1,client:{},accounts:{Karachi:seedAccount()},notices:[]},handler:async url=>{
     if(url.includes('/messages?'))return url.includes('pageToken=remaining')?

@@ -11,7 +11,11 @@ window.addEventListener('flutter-first-frame',()=>document.querySelector('#boot'
 window.careerosOfflineStatus = 'loading';
 if ('serviceWorker' in navigator) window.addEventListener('load',async()=>{
   try {
-    await navigator.serviceWorker.register('offline.js');
+    const registration = await navigator.serviceWorker.register('offline.js');
+    const installing = registration.installing;
+    installing?.addEventListener('statechange',()=>{
+      if (installing.state === 'redundant' && !registration.active) window.careerosOfflineStatus = 'unavailable';
+    });
     await navigator.serviceWorker.ready;
     window.careerosOfflineStatus = 'ready';
   } catch { window.careerosOfflineStatus = 'unavailable'; }

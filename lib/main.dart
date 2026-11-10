@@ -980,7 +980,8 @@ class _DeskState extends State<Desk> {
                       'noopener,noreferrer'.toJS,
                     ),
                   ),
-                  if (plan.find(notice['id']) == null)
+                  if (plan.noticeMission(notice['id'], notice['fingerprint']) ==
+                      null)
                     button(t('Mere saath karo', 'Do it with me'), () {
                       final m = Mission(
                         notice['id'],
@@ -991,6 +992,7 @@ class _DeskState extends State<Desk> {
                         url: notice['url'],
                         suggestedDeadline: notice['deadline'],
                         deadlineEvidence: notice['deadlineEvidence'],
+                        noticeFingerprint: notice['fingerprint'],
                         note: notice['excerpt'],
                       );
                       add(m);

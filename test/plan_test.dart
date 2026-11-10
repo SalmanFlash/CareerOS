@@ -5,6 +5,27 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const day = '2026-11-04';
   test(
+    'a saved notice remains linked when the other campus copy becomes newest',
+    () {
+      final original = Plan()
+        ..missions.add(
+          Mission(
+            'karachi-message',
+            day,
+            noticeFingerprint: 'same-source-content',
+            state: 'done',
+          ),
+        );
+      final restored = Plan.read(jsonDecode(jsonEncode(original.toJson())));
+      expect(
+        restored.noticeMission('lahore-copy', 'same-source-content')?.id,
+        'karachi-message',
+      );
+      expect(restored.noticeMission('unrelated', ''), isNull);
+      expect(restored.noticeMission('karachi-message', ''), isNotNull);
+    },
+  );
+  test(
     'upcoming FAST deadline leads in Exam Mode without changing postponed tasks',
     () {
       final p = Plan()..examUntil = day;

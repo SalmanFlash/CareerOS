@@ -11,9 +11,12 @@ test('packaged offline shell leaves OAuth and private API routes on the network'
   const cwd=await mkdtemp(join(tmpdir(),'careeros-offline-test-'));
   await mkdir(join(cwd,'build/web'),{recursive:true});
   await writeFile(join(cwd,'build/web/index.html'),'<title>Fixture</title>');
+  await writeFile(join(cwd,'build/web/.last_build_id'),'private-build-metadata');
   execFileSync(process.execPath,[fileURLToPath(new URL('../tool/offline.mjs',import.meta.url))],{cwd});
+  const script=await readFile(join(cwd,'build/web/offline.js'),'utf8');
+  assert.ok(!script.includes('.last_build_id'),'Pages does not serve hidden build metadata');
   const events={};
-  runInNewContext(await readFile(join(cwd,'build/web/offline.js'),'utf8'),{
+  runInNewContext(script,{
     URL,Request, self:{location:{origin:'http://127.0.0.1:4173'},addEventListener:(name,fn)=>events[name]=fn},
     caches:{open:async()=>({match:async()=> 'cached shell'})}
   });

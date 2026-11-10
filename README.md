@@ -39,7 +39,7 @@ node tool/serve.mjs
 
 The offline packaging step versions the cache from the compiled files and includes the Flutter renderer. Serve the default contents of build/web at the root of the site. Updates take effect after the previous windows close. Settings reports when the offline shell is available.
 
-The November 10 local audit passed 13 Gmail regression tests, including actual Windows DPAPI encryption, nine Dart tests, and an offline-routing regression. The rebuilt app was checked in isolated Chrome at phone and desktop viewport sizes, including bilingual setup, OAuth route bypass of the service worker, offline reload, and a synthetic-notice deadline/mission flow. Google responses in scanner tests are fixtures; these checks do not establish real mailbox access or installation on a phone.
+The November 10 local audit passed 15 Gmail regression tests, including actual Windows DPAPI encryption, ten Dart tests, and an offline-routing/packaging regression. The rebuilt app was checked in isolated Chrome at phone and desktop viewport sizes, including bilingual setup, OAuth route bypass of the service worker, offline reload, and a synthetic-notice deadline/mission flow. Google responses in scanner tests are fixtures; these checks do not establish real mailbox access or installation on a phone.
 
 ## Installation and scope
 

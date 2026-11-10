@@ -5,6 +5,8 @@ const root = process.argv[2] ?? 'build/web';
 const files = [];
 async function walk(dir) {
   for (const entry of await readdir(dir, {withFileTypes:true})) {
+    // Build metadata is not a runtime asset and Pages omits hidden files.
+    if (entry.name.startsWith('.')) continue;
     const path = join(dir, entry.name);
     if (entry.isDirectory()) await walk(path);
     else if (!/(\.map|\.symbols|offline\.js|flutter_service_worker\.js)$/.test(path) && !path.includes('skwasm')) files.push(relative(root,path).split(sep).join('/'));

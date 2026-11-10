@@ -85,11 +85,13 @@ class Mission {
     this.deadline = '',
     this.suggestedDeadline = '',
     this.deadlineEvidence = '',
+    this.noticeFingerprint = '',
   });
   final String id;
   String day, title, url, state, note;
   String campus, subject, deadline;
   String suggestedDeadline, deadlineEvidence;
+  String noticeFingerprint;
   int step;
   bool get active => state == 'planned' || state == 'running';
   bool get demo => id == 'demo0' || id == 'demo1';
@@ -130,6 +132,7 @@ class Mission {
     if (deadline.isNotEmpty) 'deadline': deadline,
     if (suggestedDeadline.isNotEmpty) 'suggestedDeadline': suggestedDeadline,
     if (deadlineEvidence.isNotEmpty) 'deadlineEvidence': deadlineEvidence,
+    if (noticeFingerprint.isNotEmpty) 'noticeFingerprint': noticeFingerprint,
   };
   factory Mission.read(Map m) => Mission(
     m['id'],
@@ -144,6 +147,7 @@ class Mission {
     deadline: m['deadline'] ?? '',
     suggestedDeadline: m['suggestedDeadline'] ?? '',
     deadlineEvidence: m['deadlineEvidence'] ?? '',
+    noticeFingerprint: m['noticeFingerprint'] ?? '',
   );
 }
 
@@ -151,6 +155,13 @@ class Plan {
   bool english = false;
   String examUntil = '';
   final missions = <Mission>[];
+  Mission? noticeMission(String id, String fingerprint) => missions
+      .where(
+        (m) =>
+            m.id == id ||
+            (fingerprint.isNotEmpty && m.noticeFingerprint == fingerprint),
+      )
+      .firstOrNull;
   bool exam(String today) => examUntil.compareTo(today) >= 0;
   List<Mission> today(String day) {
     final available = missions
