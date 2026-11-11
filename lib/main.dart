@@ -4,6 +4,7 @@ import 'dart:js_interop';
 import 'package:flutter/material.dart';
 import 'plan.dart';
 import 'discovery.dart';
+import 'backup.dart';
 
 @JS('fetch')
 external JSPromise<_Response> fetchBoard(JSString url, JSObject options);
@@ -22,6 +23,14 @@ external void writeStore(JSString key, JSString value);
 external void openSource(JSString url, JSString target, JSString features);
 @JS('careerosOfflineStatus')
 external JSString get shellStatus;
+@JS('careerosBackup.encrypt')
+external JSPromise<JSString> encryptBackup(JSString text, JSString password);
+@JS('careerosBackup.decrypt')
+external JSPromise<JSString> decryptBackup(JSString text, JSString password);
+@JS('careerosBackup.pick')
+external JSPromise<JSString> pickBackup();
+@JS('careerosBackup.download')
+external void downloadBackup(JSString text);
 
 const hosted = bool.fromEnvironment('CAREEROS_HOSTED');
 
@@ -67,6 +76,8 @@ class _DeskState extends State<Desk> {
   Map<String, dynamic>? gmail;
   bool gmailLoading = false, gmailOffline = false;
   String offlineStatus = 'loading';
+  bool backupBusy = false;
+  String backupMessage = '', preparedBackup = '';
   String t(String ur, String en) => plan.english ? en : ur;
   String word(Words pair) => t(pair.$1, pair.$2);
   @override
@@ -1143,6 +1154,188 @@ class _DeskState extends State<Desk> {
     );
   }
 
+  Future<String?> backupPassword(bool exporting) async {
+    final form = GlobalKey<FormState>();
+    var password = '';
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        scrollable: true,
+        title: Text(
+          exporting
+              ? t('Backup ka password', 'Backup password')
+              : t('Backup kholo', 'Unlock backup'),
+        ),
+        content: Form(
+          key: form,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                t(
+                  'Kam az kam 12 characters. Password bhoolne par backup recover nahi ho sakta.',
+                  'Use at least 12 characters. A forgotten password cannot be recovered.',
+                ),
+              ),
+              TextFormField(
+                obscureText: true,
+                enableSuggestions: false,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  labelText: t('Password', 'Password'),
+                ),
+                onChanged: (v) => password = v,
+                validator: (v) =>
+                    (v ?? '').length < 12 || (v ?? '').length > 256
+                    ? t(
+                        '12 se 256 characters likho.',
+                        'Enter 12–256 characters.',
+                      )
+                    : null,
+              ),
+              if (exporting)
+                TextFormField(
+                  obscureText: true,
+                  enableSuggestions: false,
+                  autocorrect: false,
+                  decoration: InputDecoration(
+                    labelText: t('Password dobara', 'Repeat password'),
+                  ),
+                  validator: (v) => v != password
+                      ? t(
+                          'Passwords ek jaise nahi hain.',
+                          'Passwords do not match.',
+                        )
+                      : null,
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          link(t('Wapas', 'Cancel'), () => Navigator.pop(ctx)),
+          button(t('Aage', 'Continue'), () {
+            if (form.currentState!.validate()) Navigator.pop(ctx, password);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Future<void> exportMissions() async {
+    if (backupBusy) return;
+    setState(() {
+      backupBusy = true;
+      preparedBackup = '';
+      backupMessage = '';
+    });
+    try {
+      if (unreadable) throw const FormatException();
+      final password = await backupPassword(true);
+      if (password == null || !mounted) return;
+      final encrypted = (await encryptBackup(
+        writeBackup(plan).toJS,
+        password.toJS,
+      ).toDart).toDart;
+      if (mounted)
+        setState(() {
+          preparedBackup = encrypted;
+          backupMessage = t(
+            'Encrypted file tayyar hai. Neeche se download karo.',
+            'Encrypted file ready. Download it below.',
+          );
+        });
+    } catch (_) {
+      if (mounted)
+        setState(
+          () => backupMessage = t(
+            'Backup nahi ban saka. Existing data mehfooz hai.',
+            'Could not create the backup. Existing data is unchanged.',
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => backupBusy = false);
+    }
+  }
+
+  Future<void> importMissions() async {
+    if (backupBusy) return;
+    setState(() {
+      backupBusy = true;
+      backupMessage = '';
+    });
+    try {
+      if (unreadable || !saved) throw const FormatException();
+      final encrypted = (await pickBackup().toDart).toDart;
+      if (encrypted.isEmpty || !mounted) return;
+      final password = await backupPassword(false);
+      if (password == null || !mounted) return;
+      final incoming = readBackup(
+        (await decryptBackup(encrypted.toJS, password.toJS).toDart).toDart,
+      );
+      final before = readStore('careeros.v1'.toJS)?.toDart;
+      if (before == null &&
+          jsonEncode(plan.toJson()) != jsonEncode(Plan().toJson())) {
+        throw const FormatException();
+      }
+      if (before != null) {
+        final disk = readBackup(
+          jsonEncode({
+            'format': 'careeros-missions',
+            'version': 1,
+            'plan': jsonDecode(before),
+          }),
+        );
+        if (jsonEncode(disk.toJson()) != jsonEncode(plan.toJson()))
+          throw const FormatException();
+      }
+      final merge = mergeBackup(plan, incoming);
+      if (!mounted) return;
+      final approved = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          scrollable: true,
+          title: Text(t('Import ka jaiza', 'Review import')),
+          content: Text(
+            t(
+              '${merge.added} naye missions add honge. ${merge.kept} duplicates skip honge. Is device ke existing missions, notes, zabaan aur Exam Mode nahi badlenge.',
+              '${merge.added} new missions will be added. ${merge.kept} duplicates will be skipped. This device’s existing missions, notes, language and Exam Mode will stay unchanged.',
+            ),
+          ),
+          actions: [
+            link(t('Wapas', 'Cancel'), () => Navigator.pop(ctx, false)),
+            button(
+              t('Missions add karo', 'Add missions'),
+              () => Navigator.pop(ctx, true),
+            ),
+          ],
+        ),
+      );
+      if (approved != true || !mounted) return;
+      if (readStore('careeros.v1'.toJS)?.toDart != before)
+        throw const FormatException();
+      // localStorage.setItem is atomic; update the live UI only after it succeeds.
+      writeStore('careeros.v1'.toJS, jsonEncode(merge.plan.toJson()).toJS);
+      setState(() {
+        plan = merge.plan;
+        preparedBackup = '';
+        backupMessage = t(
+          '${merge.added} missions import ho gaye.',
+          '${merge.added} missions imported.',
+        );
+      });
+    } catch (_) {
+      if (mounted)
+        setState(
+          () => backupMessage = t(
+            'Import nahi hua. File/password, storage ya doosre tab ki changes check karo. Existing data nahi badla.',
+            'Nothing imported. Check the file/password, storage, or changes in another tab. Existing data is unchanged.',
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => backupBusy = false);
+    }
+  }
+
   List<Widget> settings() => [
     eyebrow('CareerOS'),
     heading('Settings'),
@@ -1214,6 +1407,34 @@ class _DeskState extends State<Desk> {
           'Missions and notes are saved only in this browser. Clearing browser data can erase the record. Automatic sync between devices is not available yet.',
         ),
       ),
+      Text(
+        t(
+          'Encrypted backup apne paas save karo aur doosre device par import karo. Sirf missions aur unke notes aate hain; Gmail login aur inbox cache nahi. Ye manual transfer hai.',
+          'Save an encrypted backup and import it on another device. It contains missions and their notes, not Gmail login or inbox cache. This is a manual transfer.',
+        ),
+      ),
+      Wrap(
+        spacing: 8,
+        children: [
+          FilledButton(
+            onPressed: backupBusy ? null : exportMissions,
+            child: Text(t('Backup banao', 'Create backup')),
+          ),
+          TextButton(
+            onPressed: backupBusy ? null : importMissions,
+            child: Text(t('Backup import karo', 'Import backup')),
+          ),
+          if (preparedBackup.isNotEmpty)
+            TextButton(
+              onPressed: () => downloadBackup(preparedBackup.toJS),
+              child: Text(
+                t('Encrypted file download karo', 'Download encrypted file'),
+              ),
+            ),
+        ],
+      ),
+      if (backupBusy) Text(t('Kaam ho raha hai…', 'Working…')),
+      if (backupMessage.isNotEmpty) Text(backupMessage),
     ]),
   ];
 

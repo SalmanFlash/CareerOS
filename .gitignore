@@ -5,6 +5,7 @@ client_secret*.json
 credentials.json
 *.dpapi
 *.dpapi.tmp
+*.careeros
 .env
 .env.*
 !.env.example

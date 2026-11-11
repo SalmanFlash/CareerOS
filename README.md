@@ -14,6 +14,14 @@ The controls at the top right switch between Roman Urdu and English and enable E
 
 In **Aaj → FAST notice add karo**, choose the Karachi or Lahore inbox, enter the email subject and required action, and optionally enter the stated deadline as YYYY-MM-DD (Pakistan time). This manual workflow stores those fields in your browser. Active notices due by tomorrow take priority over routine tasks, including in Exam Mode. Use Progress → Edit notice to correct a date or action. Postponing changes the planned day while preserving the original deadline.
 
+## Back up or transfer missions
+
+In Settings → Device workspace, choose **Create backup**, enter and repeat a password of at least 12 characters, then choose **Download encrypted file**. Keep the password separately; there is no password recovery. This local encrypted file contains missions, notes and checkpoints, including email excerpts already saved as missions. It excludes Gmail credentials and the scanner's inbox cache. The app does not upload the file anywhere.
+
+On another device, choose **Import backup**, select the `.careeros` file and enter its password. Review the number of new and duplicate missions before choosing **Add missions**. Existing missions and notes always win conflicts; language and Exam Mode stay as configured on the receiving device. Re-importing the same file does not duplicate tasks. Imports with invalid content, a wrong password, insufficient storage or concurrent edits fail without replacing the existing record. Backups and imports also work after the app is cached offline.
+
+This is a manual, encrypted transfer, not automatic synchronization. Verify the imported missions before clearing browser data on the source device. File downloads and picker behavior on a physical phone still require verification.
+
 ## Independent Gmail connection
 
 Open **Settings → Open Gmail setup** in Edge or Chrome on Windows. Follow the linked Google guide to enable Gmail API, add both university addresses as test users and download a Desktop app OAuth client JSON. Select that file on the local setup page and authorize Karachi and Lahore individually. Google Workspace policy can prevent access, and testing-mode consent may require reconnecting.
@@ -32,6 +40,7 @@ flutter analyze
 flutter test
 node --test test/gmail.test.mjs
 node --test test/offline.test.mjs
+node --test test/backup.test.mjs
 flutter build web --release --no-web-resources-cdn --pwa-strategy none
 node tool/offline.mjs
 node tool/serve.mjs
