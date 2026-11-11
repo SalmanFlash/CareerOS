@@ -14,6 +14,14 @@ The controls at the top right switch between Roman Urdu and English and enable E
 
 In **Aaj → FAST notice add karo**, choose the Karachi or Lahore inbox, enter the email subject and required action, and optionally enter the stated deadline as YYYY-MM-DD (Pakistan time). This manual workflow stores those fields in your browser. Active notices due by tomorrow take priority over routine tasks, including in Exam Mode. Use Progress → Edit notice to correct a date or action. Postponing changes the planned day while preserving the original deadline.
 
+## Application tracking and follow-ups
+
+For a real listing mission, choose **Track application** on Today or Progress. Record Saved, Preparing, Applied, Interview, Offer or Closed, an optional follow-up date in Pakistan time, and separate application notes. These are self-reported records: finishing a guided mission never submits an application or changes its application stage. Demo and university-notice missions are not application records.
+
+Due and overdue follow-ups appear on Today, including when the preparation mission is already completed or skipped. Use **Follow up tomorrow** to postpone the reminder, or edit its date. Closing an application clears its follow-up. These are in-app reminders, not background notifications, and no messages are sent. Exam Mode shows at most one due follow-up card while keeping all records in Progress.
+
+Progress separates completed missions from application stage counts and shows when a record was updated and first marked Applied. That date is the day you recorded the status, not independent proof of submission. Application stages, dates and notes persist offline and are included in encrypted backups; existing records still win import conflicts.
+
 ## Back up or transfer missions
 
 In Settings → Device workspace, choose **Create backup**, enter and repeat a password of at least 12 characters, then choose **Download encrypted file**. Keep the password separately; there is no password recovery. This local encrypted file contains missions, notes and checkpoints, including email excerpts already saved as missions. It excludes Gmail credentials and the scanner's inbox cache. The app does not upload the file anywhere.

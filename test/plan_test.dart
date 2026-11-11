@@ -5,6 +5,78 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const day = '2026-11-04';
   test(
+    'application records never infer submission from mission completion',
+    () {
+      final m = Mission('listing', day, url: 'https://example.com/job');
+      m.state = 'done';
+      expect(m.tracked, false);
+      m.recordApplication('applied', day, '2026-11-07', 'Check portal');
+      expect(m.state, 'done');
+      expect(m.appliedOn, day);
+      m.recordApplication('interview', '2026-11-06', '2026-11-09', 'Prepare');
+      expect(m.appliedOn, day);
+      expect(m.applicationUpdated, '2026-11-06');
+      final restored = Mission.read(m.toJson());
+      expect(restored.toJson(), m.toJson());
+      m.recordApplication(
+        'closed',
+        '2026-11-07',
+        '2026-11-09',
+        'No longer pursuing',
+      );
+      expect(m.followUp, '');
+      expect(m.state, 'done');
+    },
+  );
+  test(
+    'due follow-ups persist independently of skipped or completed missions',
+    () {
+      final p = Plan();
+      for (final (id, due, stage, state) in [
+        ('later', '2026-11-05', 'applied', 'done'),
+        ('overdue', '2026-11-02', 'preparing', 'skipped'),
+        ('today', day, 'interview', 'done'),
+        ('closed', day, 'closed', 'done'),
+      ]) {
+        final m = Mission(
+          id,
+          day,
+          url: 'https://example.com/$id',
+          state: state,
+        );
+        m.recordApplication(stage, day, due, '');
+        p.missions.add(m);
+      }
+      expect(p.followUps(day).map((m) => m.id), ['overdue', 'today']);
+      p.examUntil = day;
+      expect(p.followUps(day).length, 2);
+    },
+  );
+  test('invalid application updates cannot partially mutate a record', () {
+    final m = Mission('listing', day, url: 'https://example.com/job');
+    final before = m.toJson();
+    for (final (stage, date, next) in [
+      ('sent', day, ''),
+      ('applied', 'bad', ''),
+      ('applied', day, '2026-02-30'),
+    ]) {
+      expect(
+        () => m.recordApplication(stage, date, next, ''),
+        throwsFormatException,
+      );
+      expect(m.toJson(), before);
+    }
+    for (final m in [
+      Mission('demo0', day, url: 'https://example.com'),
+      Mission('mail', day, url: 'https://example.com', campus: 'Lahore'),
+    ]) {
+      expect(
+        () => m.recordApplication('applied', day, '', ''),
+        throwsFormatException,
+      );
+    }
+  });
+  test(
     'a saved notice remains linked when the other campus copy becomes newest',
     () {
       final original = Plan()

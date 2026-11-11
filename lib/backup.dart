@@ -15,14 +15,15 @@ const _fields = {
   'suggestedDeadline',
   'deadlineEvidence',
   'noticeFingerprint',
+  'applicationStage',
+  'followUp',
+  'applicationNote',
+  'applicationUpdated',
+  'appliedOn',
 };
 
-bool _date(String value, {bool optional = false}) {
-  if (value.isEmpty) return optional;
-  if (!RegExp(r'^20\d{2}-\d{2}-\d{2}$').hasMatch(value)) return false;
-  final date = DateTime.tryParse('${value}T00:00:00Z');
-  return date != null && date.toIso8601String().substring(0, 10) == value;
-}
+bool _date(String value, {bool optional = false}) =>
+    validDay(value, optional: optional);
 
 Plan readBackup(String text) {
   if (utf8.encode(text).length > 4 * 1024 * 1024) throw const FormatException();
@@ -77,6 +78,24 @@ Plan readBackup(String text) {
     if (m['step'] is! int ||
         m['step'] < 0 ||
         m['step'] >= Mission.read(m).steps.length)
+      throw const FormatException();
+    final mission = Mission.read(m);
+    if (!{'', ...applicationStages.keys}.contains(mission.applicationStage) ||
+        !_date(mission.followUp, optional: true) ||
+        !_date(mission.applicationUpdated, optional: true) ||
+        !_date(mission.appliedOn, optional: true) ||
+        (mission.tracked &&
+            (!mission.canTrackApplication ||
+                !_date(mission.applicationUpdated))) ||
+        (mission.applicationStage == 'applied' && mission.appliedOn.isEmpty) ||
+        (!mission.tracked &&
+            [
+              mission.followUp,
+              mission.applicationUpdated,
+              mission.appliedOn,
+              mission.applicationNote,
+            ].any((v) => v.isNotEmpty)) ||
+        (mission.applicationStage == 'closed' && mission.followUp.isNotEmpty))
       throw const FormatException();
   }
   return Plan.read(plan);

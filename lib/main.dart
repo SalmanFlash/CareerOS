@@ -314,6 +314,7 @@ class _DeskState extends State<Desk> {
 
   List<Widget> daily() {
     final list = plan.today(today);
+    final followUps = plan.followUps(today);
     return [
       eyebrow('PKT  /  ' + today),
       const SizedBox(height: 8),
@@ -330,6 +331,39 @@ class _DeskState extends State<Desk> {
           ),
         ]),
       ...gmailCards(),
+      if (followUps.isNotEmpty)
+        panel([
+          eyebrow(t('Application follow-ups', 'Application follow-ups')),
+          Text(
+            t(
+              '${followUps.length} follow-ups ki tareekh aa gayi hai. Ye sirf app ke andar reminders hain.',
+              '${followUps.length} follow-ups are due. These reminders appear inside the app only.',
+            ),
+          ),
+          for (final m in followUps.take(plan.exam(today) ? 1 : 3)) ...[
+            titleText(word(m.label)),
+            Text(
+              '${word(applicationStages[m.applicationStage]!)} · ${m.followUp} PKT',
+            ),
+            Wrap(
+              children: [
+                button(
+                  t('Application badlo', 'Update application'),
+                  () => applicationEditor(m),
+                ),
+                link(
+                  t('Follow-up kal', 'Follow up tomorrow'),
+                  () => change(
+                    () => m.followUp = dayAt(
+                      DateTime.now().add(const Duration(days: 1)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          link(t('Saara record dekho', 'View all records'), () => go(3)),
+        ]),
       if (list.isEmpty)
         panel([
           eyebrow(t('Agla kaam', 'Next action')),
@@ -352,6 +386,13 @@ class _DeskState extends State<Desk> {
           ),
           titleText(word(m.label)),
           if (m.campus.isNotEmpty) universitySource(m),
+          if (m.canTrackApplication)
+            link(
+              m.tracked
+                  ? t('Application badlo', 'Update application')
+                  : t('Application track karo', 'Track application'),
+              () => applicationEditor(m),
+            ),
           Text((m.campus.isEmpty ? '15 min   ·   ' : '') + stateName(m)),
           Wrap(
             spacing: 6,
@@ -783,6 +824,27 @@ class _DeskState extends State<Desk> {
         ),
       ),
     ], accent: true),
+    if (plan.missions.any((m) => m.tracked))
+      panel([
+        eyebrow(t('Applications ka record', 'Application records')),
+        Text(
+          t(
+            'Ye tumhara apna update hai. Mission complete karne se application submit nahi hoti.',
+            'These are your own updates. Completing a mission does not submit an application.',
+          ),
+        ),
+        Wrap(
+          spacing: 16,
+          runSpacing: 8,
+          children: [
+            for (final stage in applicationStages.entries)
+              if (plan.missions.any((m) => m.applicationStage == stage.key))
+                Text(
+                  '${word(stage.value)}: ${plan.missions.where((m) => m.applicationStage == stage.key).length}',
+                ),
+          ],
+        ),
+      ]),
     if (plan.missions.isEmpty)
       Text(
         t(
@@ -797,8 +859,33 @@ class _DeskState extends State<Desk> {
         if (m.campus.isNotEmpty) universitySource(m),
         Text(m.day + '   ·   PKT'),
         if (m.note.isNotEmpty) Text(m.note),
+        if (m.tracked) ...[
+          Text(
+            t('Application: ', 'Application: ') +
+                word(applicationStages[m.applicationStage]!),
+          ),
+          if (m.applicationUpdated.isNotEmpty)
+            Text(
+              t('Record update: ', 'Record updated: ') +
+                  '${m.applicationUpdated} PKT',
+            ),
+          if (m.appliedOn.isNotEmpty)
+            Text(
+              t('Pehli baar Applied mark kiya: ', 'First marked Applied: ') +
+                  '${m.appliedOn} PKT',
+            ),
+          if (m.followUp.isNotEmpty) Text('Follow-up: ${m.followUp} PKT'),
+          if (m.applicationNote.isNotEmpty) Text(m.applicationNote),
+        ],
         Wrap(
           children: [
+            if (m.canTrackApplication)
+              link(
+                m.tracked
+                    ? t('Application badlo', 'Update application')
+                    : t('Application track karo', 'Track application'),
+                () => applicationEditor(m),
+              ),
             if (m.campus.isNotEmpty)
               link(t('Notice badlo', 'Edit notice'), () => universityNotice(m))
             else
@@ -816,6 +903,111 @@ class _DeskState extends State<Desk> {
         ),
       ]),
   ];
+  Future<void> applicationEditor(Mission mission) async {
+    final form = GlobalKey<FormState>();
+    var stage = mission.applicationStage.isEmpty
+        ? 'saved'
+        : mission.applicationStage;
+    var followUp = mission.followUp, note = mission.applicationNote;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, update) => AlertDialog(
+          scrollable: true,
+          title: Text(t('Application ka record', 'Application record')),
+          content: Form(
+            key: form,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(word(mission.label)),
+                const SizedBox(height: 12),
+                Text(
+                  t(
+                    'Sirf record save hoga. Koi application ya message send nahi hoga.',
+                    'This saves your record only. It does not submit an application or send a message.',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: stage,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: t('Application ka stage', 'Application stage'),
+                  ),
+                  items: applicationStages.entries
+                      .map(
+                        (s) => DropdownMenuItem(
+                          value: s.key,
+                          child: Text(word(s.value)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) => update(() => stage = v!),
+                ),
+                TextFormField(
+                  initialValue: followUp,
+                  enabled: stage != 'closed',
+                  decoration: InputDecoration(
+                    labelText: t(
+                      'Follow-up ki tareekh (optional)',
+                      'Follow-up date (optional)',
+                    ),
+                    helperText: 'YYYY-MM-DD · PKT',
+                  ),
+                  onChanged: (v) => followUp = v.trim(),
+                  validator: (v) =>
+                      stage == 'closed' ||
+                          validDay((v ?? '').trim(), optional: true)
+                      ? null
+                      : t(
+                          'Sahi tareekh YYYY-MM-DD mein likho.',
+                          'Enter a valid date as YYYY-MM-DD.',
+                        ),
+                ),
+                if (stage == 'closed')
+                  Text(
+                    t(
+                      'Closed karne se follow-up reminder hat jayega.',
+                      'Closing clears the follow-up reminder.',
+                    ),
+                  ),
+                TextFormField(
+                  initialValue: note,
+                  maxLines: 3,
+                  maxLength: 8192,
+                  decoration: InputDecoration(
+                    labelText: t('Application ke notes', 'Application notes'),
+                  ),
+                  onChanged: (v) => note = v,
+                  validator: (v) => (v ?? '').length > 8192
+                      ? t('Note chhota karo.', 'Shorten this note.')
+                      : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            link(t('Wapas', 'Cancel'), () => Navigator.pop(ctx, false)),
+            button(t('Record save karo', 'Save record'), () {
+              if (form.currentState!.validate()) Navigator.pop(ctx, true);
+            }),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    change(
+      () => mission.recordApplication(
+        stage,
+        dayAt(DateTime.now()),
+        followUp,
+        note,
+      ),
+    );
+  }
+
   Future<void> refreshGmail() async {
     if (hosted) return;
     if (gmailLoading) return;

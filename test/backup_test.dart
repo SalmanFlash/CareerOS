@@ -4,6 +4,39 @@ import 'package:careeros/backup.dart';
 import 'package:careeros/plan.dart';
 
 void main() {
+  test(
+    'application fields survive export/merge and invalid records are rejected',
+    () {
+      final p = Plan()
+        ..missions.add(
+          Mission('app', '2026-11-11', url: 'https://example.com/job'),
+        );
+      p.missions.single.recordApplication(
+        'applied',
+        '2026-11-11',
+        '2026-11-15',
+        'Follow up after exam',
+      );
+      final restored = readBackup(writeBackup(p));
+      expect(
+        mergeBackup(Plan(), restored).plan.missions.single.toJson(),
+        p.missions.single.toJson(),
+      );
+      for (final edit in <void Function(Map)>[
+        (m) => m['applicationStage'] = 'invented',
+        (m) => m['followUp'] = '2026-02-30',
+        (m) => m['applicationStage'] = 'closed',
+        (m) => m['campus'] = 'Lahore',
+        (m) => m['applicationStage'] = '',
+        (m) => m['applicationUpdated'] = '',
+        (m) => m['appliedOn'] = '',
+      ]) {
+        final data = jsonDecode(writeBackup(p));
+        edit(data['plan']['missions'][0]);
+        expect(() => readBackup(jsonEncode(data)), throwsFormatException);
+      }
+    },
+  );
   Plan fixture() => Plan()
     ..missions.add(
       Mission(

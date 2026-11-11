@@ -1,5 +1,14 @@
 typedef Words = (String, String);
 
+const applicationStages = <String, Words>{
+  'saved': ('Save ki hui', 'Saved'),
+  'preparing': ('Tayyari jaari', 'Preparing'),
+  'applied': ('Apply kar diya', 'Applied'),
+  'interview': ('Interview', 'Interview'),
+  'offer': ('Offer mila', 'Offer'),
+  'closed': ('Band / ab nahi karna', 'Closed'),
+};
+
 const opportunities = [
   (
     ('Software engineering internship', 'Software engineering internship'),
@@ -71,6 +80,13 @@ String dayAt(DateTime now) => now
     .toIso8601String()
     .substring(0, 10);
 
+bool validDay(String value, {bool optional = false}) {
+  if (value.isEmpty) return optional;
+  if (!RegExp(r'^20\d{2}-\d{2}-\d{2}$').hasMatch(value)) return false;
+  final date = DateTime.tryParse('${value}T00:00:00Z');
+  return date != null && date.toIso8601String().substring(0, 10) == value;
+}
+
 class Mission {
   Mission(
     this.id,
@@ -86,12 +102,44 @@ class Mission {
     this.suggestedDeadline = '',
     this.deadlineEvidence = '',
     this.noticeFingerprint = '',
+    this.applicationStage = '',
+    this.followUp = '',
+    this.applicationNote = '',
+    this.applicationUpdated = '',
+    this.appliedOn = '',
   });
   final String id;
   String day, title, url, state, note;
   String campus, subject, deadline;
   String suggestedDeadline, deadlineEvidence;
   String noticeFingerprint;
+  String applicationStage,
+      followUp,
+      applicationNote,
+      applicationUpdated,
+      appliedOn;
+  bool get canTrackApplication =>
+      !demo && campus.isEmpty && url.isNotEmpty && id != 'growth';
+  bool get tracked => applicationStage.isNotEmpty;
+  void recordApplication(
+    String stage,
+    String date,
+    String nextDate,
+    String note,
+  ) {
+    if (!canTrackApplication ||
+        !applicationStages.containsKey(stage) ||
+        !validDay(date) ||
+        (stage != 'closed' && !validDay(nextDate, optional: true)) ||
+        note.length > 8192)
+      throw const FormatException();
+    applicationStage = stage;
+    applicationUpdated = date;
+    if (stage == 'applied' && appliedOn.isEmpty) appliedOn = date;
+    followUp = stage == 'closed' ? '' : nextDate;
+    applicationNote = note;
+  }
+
   int step;
   bool get active => state == 'planned' || state == 'running';
   bool get demo => id == 'demo0' || id == 'demo1';
@@ -133,6 +181,11 @@ class Mission {
     if (suggestedDeadline.isNotEmpty) 'suggestedDeadline': suggestedDeadline,
     if (deadlineEvidence.isNotEmpty) 'deadlineEvidence': deadlineEvidence,
     if (noticeFingerprint.isNotEmpty) 'noticeFingerprint': noticeFingerprint,
+    if (applicationStage.isNotEmpty) 'applicationStage': applicationStage,
+    if (followUp.isNotEmpty) 'followUp': followUp,
+    if (applicationNote.isNotEmpty) 'applicationNote': applicationNote,
+    if (applicationUpdated.isNotEmpty) 'applicationUpdated': applicationUpdated,
+    if (appliedOn.isNotEmpty) 'appliedOn': appliedOn,
   };
   factory Mission.read(Map m) => Mission(
     m['id'],
@@ -148,6 +201,11 @@ class Mission {
     suggestedDeadline: m['suggestedDeadline'] ?? '',
     deadlineEvidence: m['deadlineEvidence'] ?? '',
     noticeFingerprint: m['noticeFingerprint'] ?? '',
+    applicationStage: m['applicationStage'] ?? '',
+    followUp: m['followUp'] ?? '',
+    applicationNote: m['applicationNote'] ?? '',
+    applicationUpdated: m['applicationUpdated'] ?? '',
+    appliedOn: m['appliedOn'] ?? '',
   );
 }
 
@@ -155,6 +213,18 @@ class Plan {
   bool english = false;
   String examUntil = '';
   final missions = <Mission>[];
+  List<Mission> followUps(String day) =>
+      missions
+          .where(
+            (m) =>
+                m.canTrackApplication &&
+                m.tracked &&
+                m.applicationStage != 'closed' &&
+                m.followUp.isNotEmpty &&
+                m.followUp.compareTo(day) <= 0,
+          )
+          .toList()
+        ..sort((a, b) => a.followUp.compareTo(b.followUp));
   Mission? noticeMission(String id, String fingerprint) => missions
       .where(
         (m) =>
