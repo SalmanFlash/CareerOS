@@ -1,5 +1,85 @@
 typedef Words = (String, String);
 
+class GrowthWorkflow {
+  const GrowthWorkflow(this.label, this.steps, this.template);
+  final Words label, template;
+  final List<Words> steps;
+}
+
+const growthWorkflows = <String, GrowthWorkflow>{
+  'readme': GrowthWorkflow(
+    ('GitHub: README test karo', 'GitHub: Test your README'),
+    growthSteps,
+    (
+      'Project:\nSetup ka masla:\nNayi instruction:\nKhud test karne ka nateeja:',
+      'Project:\nSetup problem:\nRevised instruction:\nResult of testing it yourself:',
+    ),
+  ),
+  'contribution': GrowthWorkflow(
+    ('GitHub: Contribution tayyar karo', 'GitHub: Prepare a contribution'),
+    [
+      (
+        'Repository ki CONTRIBUTING file aur issue parho. Scope aur maintainer ki requirements note karo.',
+        'Read the repository CONTRIBUTING file and issue. Note the scope and maintainer requirements.',
+      ),
+      (
+        'Apni local branch mein chhoti change karo. Asal test command aur uska nateeja draft mein likho; jo test nahi hua woh bhi batao.',
+        'Make a small change on your local branch. Record the actual test command and result, including anything untested.',
+      ),
+      (
+        'Diff mein secrets aur unrelated changes check karo. PR draft mein problem, change aur test evidence likho. Publish karne ka faisla alag se karo.',
+        'Review the diff for secrets and unrelated changes. Draft the PR problem, change and test evidence. Decide separately whether to publish.',
+      ),
+    ],
+    (
+      'Repository / issue:\nProblem:\nMeri change:\nTests aur nateeje:\nAbhi kya verify nahi hua:',
+      'Repository / issue:\nProblem:\nMy change:\nTests and results:\nNot yet verified:',
+    ),
+  ),
+  'profile': GrowthWorkflow(
+    ('LinkedIn: Profile draft banao', 'LinkedIn: Draft your profile'),
+    [
+      (
+        'Apni current education, target role aur ek asal project ka saboot likho. Sirf woh skills chuno jo explain kar sakte ho.',
+        'Note your current education, target role and evidence from one real project. Choose skills you can explain.',
+      ),
+      (
+        'Headline mein apna current role aur focus likho. About mein kya banaya, tumhara hissa aur kya seekha likho.',
+        'Draft a headline with your current role and focus. In About, describe what you built, your contribution and what you learned.',
+      ),
+      (
+        'Har claim aur link check karo. Banaye hue numbers, experience ya private details hatao. Final draft ko khud review karo.',
+        'Check each claim and link. Remove invented metrics, experience and private details. Review the final draft yourself.',
+      ),
+    ],
+    (
+      'Headline:\nAbout:\nAsal project aur mera hissa:\nSaboot / public link:\nAgla learning goal:',
+      'Headline:\nAbout:\nReal project and my contribution:\nEvidence / public link:\nNext learning goal:',
+    ),
+  ),
+  'post': GrowthWorkflow(
+    ('LinkedIn: Project post likho', 'LinkedIn: Draft a project post'),
+    [
+      (
+        'Ek asal project milestone chuno. Problem, tumhara apna kaam aur dikhane layak result note karo.',
+        'Choose a real project milestone. Note the problem, your own work and a result you can demonstrate.',
+      ),
+      (
+        'Chhota post likho: kya banaya, ek mushkil, kya seekha aur public demo ya repo link agar available ho.',
+        'Draft a short post: what you built, one challenge, what you learned, and a public demo or repository link if available.',
+      ),
+      (
+        'Facts aur link check karo. Team ko credit do aur private data hatao. Ye local draft hai; publish khud review karne ke baad karo.',
+        'Check facts and links. Credit collaborators and remove private data. This is a local draft; publish only after your own review.',
+      ),
+    ],
+    (
+      'Kya banaya:\nMera hissa:\nEk mushkil aur seekh:\nAsal result:\nPublic link / credits:',
+      'What I built:\nMy contribution:\nOne challenge and lesson:\nActual result:\nPublic link / credits:',
+    ),
+  ),
+};
+
 const applicationStages = <String, Words>{
   'saved': ('Save ki hui', 'Saved'),
   'preparing': ('Tayyari jaari', 'Preparing'),
@@ -107,19 +187,24 @@ class Mission {
     this.applicationNote = '',
     this.applicationUpdated = '',
     this.appliedOn = '',
+    this.workflow = '',
   });
   final String id;
   String day, title, url, state, note;
   String campus, subject, deadline;
   String suggestedDeadline, deadlineEvidence;
   String noticeFingerprint;
+  final String workflow;
+  String get workflowKey =>
+      id == 'growth' && workflow.isEmpty ? 'readme' : workflow;
+  bool get isGrowth => workflowKey.isNotEmpty;
   String applicationStage,
       followUp,
       applicationNote,
       applicationUpdated,
       appliedOn;
   bool get canTrackApplication =>
-      !demo && campus.isEmpty && url.isNotEmpty && id != 'growth';
+      !demo && campus.isEmpty && url.isNotEmpty && !isGrowth;
   bool get tracked => applicationStage.isNotEmpty;
   void recordApplication(
     String stage,
@@ -159,11 +244,13 @@ class Mission {
       ? cvSteps
       : id == 'demo1'
       ? researchSteps
-      : id == 'growth'
-      ? growthSteps
+      : isGrowth
+      ? growthWorkflows[workflowKey]!.steps
       : manualSteps;
   Words get label => title.isNotEmpty
       ? (title, title)
+      : isGrowth
+      ? growthWorkflows[workflowKey]!.label
       : demo
       ? opportunities[id == 'demo0' ? 0 : 1].$2
       : ('Project README behtar karo', 'Improve your project README');
@@ -175,6 +262,7 @@ class Mission {
     'state': state,
     'step': step,
     'note': note,
+    if (workflow.isNotEmpty) 'workflow': workflow,
     if (campus.isNotEmpty) 'campus': campus,
     if (subject.isNotEmpty) 'subject': subject,
     if (deadline.isNotEmpty) 'deadline': deadline,
@@ -195,6 +283,7 @@ class Mission {
     state: m['state'],
     step: m['step'],
     note: m['note'],
+    workflow: m['workflow'] ?? '',
     campus: m['campus'] ?? '',
     subject: m['subject'] ?? '',
     deadline: m['deadline'] ?? '',
@@ -239,7 +328,7 @@ class Plan {
           (m) =>
               m.active &&
               m.day.compareTo(day) <= 0 &&
-              (!exam(day) || m.id != 'growth'),
+              (!exam(day) || !m.isGrowth),
         )
         .toList();
     final tomorrow = DateTime.parse(

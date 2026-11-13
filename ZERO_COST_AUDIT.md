@@ -5,6 +5,7 @@
 | Flutter SDK and Dart | Local compilation and UI | No | Uses installed tools and free packages. |
 | Node.js | Local preview and offline packaging | No | Preview server binds to 127.0.0.1. |
 | Browser storage and service worker | Missions, preferences and offline shell | No | Saved in the current profile. Storage availability and retention depend on browser settings. |
+| GitHub / LinkedIn guidance | Local outlines, draft editing and manual clipboard copy | No | No API, sign-in, model, posting service or credentials. Drafts remain in browser storage and encrypted backups; copying is user-triggered. Offline guides remain available. |
 | Greenhouse Job Board API | User-triggered public GET requests for five employer boards | No | No API key, account, application submission or private mission data. Requests time out after 12 seconds and failed boards retain their last successful timestamp. |
 | Local Gmail scanner | Read-only Gmail requests with the owner's Desktop app OAuth client | No billing is provisioned | Requires user setup and university permission. Runs every 15 minutes while the local service is on. Real account authorization remains unverified. |
 | Windows DPAPI | Encrypt local OAuth credentials and short mail excerpts | No | Bound to the current Windows account. Ciphertext is stored outside the repository and excluded from Git. |

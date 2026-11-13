@@ -5,6 +5,39 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const day = '2026-11-04';
   test(
+    'growth drafts survive reload, pause for exams and cannot become applications',
+    () {
+      final p = Plan()..examUntil = day;
+      for (final key in growthWorkflows.keys) {
+        p.missions.add(
+          Mission(
+            'draft-$key',
+            day,
+            workflow: key,
+            step: 1,
+            note: 'My evidence',
+            url: 'https://example.com/project',
+          ),
+        );
+      }
+      p.missions.add(Mission('growth', day, step: 2, note: 'Legacy README'));
+      final restored = Plan.read(jsonDecode(jsonEncode(p.toJson())));
+      expect(restored.toJson(), p.toJson());
+      expect(restored.today(day), isEmpty);
+      expect(restored.today('2026-11-05').length, 3);
+      for (final m in restored.missions) {
+        expect(m.canTrackApplication, false);
+        expect(m.steps, growthWorkflows[m.workflowKey]!.steps);
+        expect(
+          () => m.recordApplication('applied', day, '', ''),
+          throwsFormatException,
+        );
+      }
+      expect(restored.find('growth')!.steps, growthSteps);
+      expect(restored.find('growth')!.note, 'Legacy README');
+    },
+  );
+  test(
     'application records never infer submission from mission completion',
     () {
       final m = Mission('listing', day, url: 'https://example.com/job');

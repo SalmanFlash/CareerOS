@@ -22,6 +22,12 @@ Due and overdue follow-ups appear on Today, including when the preparation missi
 
 Progress separates completed missions from application stage counts and shows when a record was updated and first marked Applied. That date is the day you recorded the status, not independent proof of submission. Application stages, dates and notes persist offline and are included in encrypted backups; existing records still win import conflicts.
 
+## Guided GitHub and LinkedIn drafts
+
+Growth offers four local workflows: test a project README, prepare a GitHub contribution/PR description, draft a LinkedIn profile, and draft a project post. Each has three review steps and an optional outline. Add your own evidence and actual results; the app does not invent experience or metrics. These are deterministic guides, not AI-generated advice or connected GitHub/LinkedIn accounts.
+
+Draft edits and checkpoints save on this device. Use **Continue draft** to resume, **Copy draft** for manual use elsewhere, and **Open draft** in Progress to edit an older draft. Completing a workflow lets you start another while preserving previous drafts. Completion records your review; it does not publish a post, open a PR or change a repository. Exam Mode keeps these workflows out of Today while leaving them accessible from Growth. Encrypted backups preserve the draft type, text and checkpoint.
+
 ## Back up or transfer missions
 
 In Settings → Device workspace, choose **Create backup**, enter and repeat a password of at least 12 characters, then choose **Download encrypted file**. Keep the password separately; there is no password recovery. This local encrypted file contains missions, notes and checkpoints, including email excerpts already saved as missions. It excludes Gmail credentials and the scanner's inbox cache. The app does not upload the file anywhere.
@@ -68,4 +74,4 @@ Under **Mauqay → Abhi check karo** (Opportunities → Check now), the browser 
 
 Each successful check replaces that board's local snapshot, removing listings that have disappeared. A failed check keeps previous results with their original timestamp. Results older than 24 hours are marked cached, and those older than seven days are hidden. The app limits refreshes to once per minute per session. Missions you already created remain in Progress.
 
-Also included are personal listing intake, two demo listings, a guided GitHub README exercise, bilingual mission tracking, Exam Mode and device-local persistence. Independent Gmail integration is in progress. Cloud sync, scheduled discovery, LinkedIn, hosted AI and push notifications are later milestones. User-entered notes and titles stay in their original language.
+Also included are personal listing intake, two demo listings, guided GitHub/LinkedIn drafts, bilingual mission tracking, Exam Mode and device-local persistence. Actual independent Gmail authorization remains unverified. Cloud sync, scheduled discovery, AI and push notifications are later milestones. User-entered notes, drafts and titles stay in their original language.

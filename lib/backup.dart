@@ -20,6 +20,7 @@ const _fields = {
   'applicationNote',
   'applicationUpdated',
   'appliedOn',
+  'workflow',
 };
 
 bool _date(String value, {bool optional = false}) =>
@@ -75,6 +76,12 @@ Plan readBackup(String text) {
           uri.userInfo.isNotEmpty)
         throw const FormatException();
     }
+    final workflow = m['workflow'] ?? '';
+    if (workflow != '' &&
+        (!growthWorkflows.containsKey(workflow) ||
+            (m['campus'] ?? '') != '' ||
+            {'demo0', 'demo1', 'growth'}.contains(m['id'])))
+      throw const FormatException();
     if (m['step'] is! int ||
         m['step'] < 0 ||
         m['step'] >= Mission.read(m).steps.length)

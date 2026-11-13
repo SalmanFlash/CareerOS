@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'plan.dart';
 import 'discovery.dart';
 import 'backup.dart';
@@ -73,6 +74,7 @@ class _DeskState extends State<Desk> {
   late String today;
   Timer? clock;
   String? focus;
+  int draftRevision = 0;
   Map<String, dynamic>? gmail;
   bool gmailLoading = false, gmailOffline = false;
   String offlineStatus = 'loading';
@@ -712,27 +714,66 @@ class _DeskState extends State<Desk> {
   }
 
   List<Widget> growth() => [
-    eyebrow('GitHub'),
+    eyebrow('GitHub / LinkedIn'),
     const SizedBox(height: 8),
     heading(tabs[2]),
     const SizedBox(height: 18),
-    panel([
-      titleText(t('README ko test karo', 'Test your README')),
+    Text(
+      t(
+        'Guided steps aur drafts isi device par save hote hain. Ye AI-generated nahi hain; CareerOS koi post ya PR publish nahi karta.',
+        'Guided steps and drafts save on this device. These are not AI-generated; CareerOS does not publish posts or PRs.',
+      ),
+    ),
+    if (plan.exam(today))
       Text(
         t(
-          'Kya koi naya developer tumhari instructions se project chala sakta hai? Ek step khud try karo.',
-          'Could a new developer run your project from your instructions? Try one step yourself.',
+          'Exam Mode mein Growth Aaj ki list se pause hai. Yahan se khud khol sakte ho.',
+          'Exam Mode pauses Growth in Today. You can still open it here.',
         ),
       ),
-      if (plan.find('growth') == null)
+    for (final entry in growthWorkflows.entries)
+      growthCard(entry.key, entry.value),
+  ];
+  Widget growthCard(String key, GrowthWorkflow workflow) {
+    final active = plan.missions
+        .where((m) => m.workflowKey == key && m.active)
+        .firstOrNull;
+    final previous = plan.missions
+        .where((m) => m.workflowKey == key)
+        .lastOrNull;
+    return panel([
+      titleText(word(workflow.label)),
+      Text(word(workflow.steps.first)),
+      if (active != null)
         button(
-          t('Mission banao', 'Create mission'),
-          () => add(Mission('growth', today)),
+          t('Draft jaari rakho', 'Continue draft'),
+          () => openGrowth(active),
         )
       else
-        link(t('Progress dekho', 'View progress'), () => go(3)),
-    ], accent: true),
-  ];
+        button(t('Naya draft shuru karo', 'Start new draft'), () {
+          var id = 'growth-${DateTime.now().microsecondsSinceEpoch}';
+          while (plan.find(id) != null) {
+            id += '-new';
+          }
+          final mission = Mission(id, today, workflow: key);
+          change(() {
+            plan.missions.add(mission);
+            mission.state = 'running';
+            focus = mission.id;
+          });
+        }),
+      if (previous != null && previous != active)
+        link(
+          t('Pichla draft kholo', 'Open previous draft'),
+          () => openGrowth(previous),
+        ),
+    ]);
+  }
+
+  void openGrowth(Mission mission) => change(() {
+    focus = mission.id;
+    if (mission.active) mission.state = 'running';
+  });
   List<Widget> guide(Mission m) => [
     Align(
       alignment: Alignment.centerLeft,
@@ -770,24 +811,69 @@ class _DeskState extends State<Desk> {
               openSource(m.url.toJS, '_blank'.toJS, 'noopener,noreferrer'.toJS),
         ),
       TextFormField(
-        key: ValueKey(m.id),
+        key: ValueKey((m.id, draftRevision)),
         initialValue: m.note,
-        maxLines: 3,
+        maxLines: m.isGrowth ? 8 : 3,
+        maxLength: m.isGrowth ? 100000 : null,
         decoration: InputDecoration(
-          labelText: t('Mere notes', 'My notes'),
+          labelText: m.isGrowth
+              ? t('Mera local draft', 'My local draft')
+              : t('Mere notes', 'My notes'),
           border: const OutlineInputBorder(),
         ),
         onChanged: (v) => change(() => m.note = v),
       ),
+      if (m.isGrowth && m.note.isEmpty)
+        link(
+          t('Draft ka khaka dalo', 'Insert draft outline'),
+          () => change(() {
+            m.note = word(growthWorkflows[m.workflowKey]!.template);
+            draftRevision++;
+          }),
+        ),
+      if (m.isGrowth && m.note.isNotEmpty)
+        link(t('Draft copy karo', 'Copy draft'), () async {
+          try {
+            await Clipboard.setData(ClipboardData(text: m.note));
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  t(
+                    'Draft copy ho gaya. Publish se pehle review karo.',
+                    'Draft copied. Review it before publishing.',
+                  ),
+                ),
+              ),
+            );
+          } catch (_) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  t(
+                    'Copy nahi hua. Draft ka text select karke copy karo.',
+                    'Copy unavailable. Select the draft text and copy it manually.',
+                  ),
+                ),
+              ),
+            );
+          }
+        }),
       Wrap(
         spacing: 8,
         children: [
           button(
-            m.step == m.steps.length - 1
+            m.isGrowth && m.state == 'done'
+                ? t('Draft band karo', 'Close draft')
+                : m.step == m.steps.length - 1
                 ? t('Complete mark karo', 'Mark complete')
                 : t('Step ho gaya', 'Finish step'),
             () => change(() {
-              if (m.step < m.steps.length - 1) {
+              if (m.isGrowth && m.state == 'done') {
+                focus = null;
+                tab = 3;
+              } else if (m.step < m.steps.length - 1) {
                 m.step++;
               } else {
                 m.state = 'done';
@@ -796,13 +882,14 @@ class _DeskState extends State<Desk> {
               }
             }),
           ),
-          link(
-            t('Pause karo', 'Pause'),
-            () => change(() {
-              m.state = 'planned';
-              focus = null;
-            }),
-          ),
+          if (m.state != 'done')
+            link(
+              t('Pause karo', 'Pause'),
+              () => change(() {
+                m.state = 'planned';
+                focus = null;
+              }),
+            ),
         ],
       ),
     ], accent: true),
@@ -858,7 +945,7 @@ class _DeskState extends State<Desk> {
         titleText(word(m.label)),
         if (m.campus.isNotEmpty) universitySource(m),
         Text(m.day + '   ·   PKT'),
-        if (m.note.isNotEmpty) Text(m.note),
+        if (m.note.isNotEmpty) SelectableText(m.note),
         if (m.tracked) ...[
           Text(
             t('Application: ', 'Application: ') +
@@ -879,6 +966,8 @@ class _DeskState extends State<Desk> {
         ],
         Wrap(
           children: [
+            if (m.isGrowth)
+              link(t('Draft kholo', 'Open draft'), () => openGrowth(m)),
             if (m.canTrackApplication)
               link(
                 m.tracked

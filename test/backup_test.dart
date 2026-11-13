@@ -5,6 +5,44 @@ import 'package:careeros/plan.dart';
 
 void main() {
   test(
+    'growth backup keeps distinct drafts and rejects invalid workflow combinations',
+    () {
+      final p = Plan()
+        ..missions.addAll([
+          Mission(
+            'first',
+            '2026-11-12',
+            workflow: 'post',
+            note: 'Original',
+            state: 'done',
+            step: 2,
+          ),
+          Mission(
+            'second',
+            '2026-11-12',
+            workflow: 'post',
+            note: 'Next milestone',
+            step: 1,
+          ),
+          Mission('growth', '2026-11-12', note: 'Legacy README'),
+        ]);
+      final merged = mergeBackup(Plan(), readBackup(writeBackup(p)));
+      expect(merged.added, 3);
+      expect(merged.plan.toJson(), p.toJson());
+      expect(mergeBackup(merged.plan, p).added, 0);
+      for (final edit in <void Function(Map)>[
+        (m) => m['workflow'] = 'unknown',
+        (m) => m['campus'] = 'Lahore',
+        (m) => m['id'] = 'demo0',
+        (m) => m['id'] = 'growth',
+      ]) {
+        final data = jsonDecode(writeBackup(p));
+        edit(data['plan']['missions'][0]);
+        expect(() => readBackup(jsonEncode(data)), throwsFormatException);
+      }
+    },
+  );
+  test(
     'application fields survive export/merge and invalid records are rejected',
     () {
       final p = Plan()
