@@ -66,7 +66,7 @@ class _DeskState extends State<Desk> {
   int tab = 0;
   final feed = <String, BoardSnapshot>{};
   final failedBoards = <String>{};
-  bool searching = false, pkOnly = false;
+  bool searching = false, pkOnly = false, showCoverage = false;
   String query = '';
   int limit = 5;
   DateTime? lastAttempt;
@@ -560,7 +560,7 @@ class _DeskState extends State<Desk> {
     final now = DateTime.now().toUtc();
     final matches = <Listing>[
       for (final snapshot in feed.values)
-        if (now.difference(snapshot.checked) < const Duration(days: 7))
+        if (!snapshot.expired(now))
           for (final job in snapshot.listings)
             if ((!pkOnly || job.pakistan) &&
                 ('${job.title} ${job.location} ${boards[job.source]}')
@@ -582,6 +582,19 @@ class _DeskState extends State<Desk> {
         eyebrow(t('Official career boards', 'Official career boards')),
         titleText(t('CS internships dhoondo', 'Find CS internships')),
         Text(boards.values.join('  ·  ')),
+        Text(
+          t(
+            'Sirf in paanch boards ki technical internships/co-ops check hoti hain, woh bhi Abhi check karo dabane par. Scholarships, fellowships aur hackathons is feed mein scan nahi hote; unki asli listing khud add kar sakte ho.',
+            'Only technical internships/co-ops on these five boards are checked, when you choose Check now. Scholarships, fellowships and hackathons are not scanned in this feed; you can add their original listings manually.',
+          ),
+        ),
+        link(
+          t('Sources ki coverage', 'Source coverage'),
+          () => setState(() => showCoverage = !showCoverage),
+        ),
+        if (showCoverage)
+          for (final entry in boards.entries)
+            sourceCoverage(entry.key, entry.value, now),
         FilledButton.icon(
           onPressed: searching ? null : refreshBoards,
           icon: const Icon(Icons.search),
@@ -621,16 +634,22 @@ class _DeskState extends State<Desk> {
               limit = 5;
             }),
           ),
-          Text(
-            t('Matches: ', 'Matches: ') +
-                matches.length.toString() +
-                '   ·   ' +
-                t('Aakhri check (PKT): ', 'Last check (PKT): ') +
-                pkt(
-                  feed.values
-                      .map((s) => s.checked)
-                      .reduce((a, b) => a.isAfter(b) ? a : b),
-                ),
+          Semantics(
+            container: true,
+            child: Text(
+              t('Matches: ', 'Matches: ') +
+                  matches.length.toString() +
+                  '   ·   ' +
+                  t(
+                    'Sab se naya successful board check (PKT): ',
+                    'Most recent successful board check (PKT): ',
+                  ) +
+                  pkt(
+                    feed.values
+                        .map((s) => s.checked)
+                        .reduce((a, b) => a.isAfter(b) ? a : b),
+                  ),
+            ),
           ),
           if (matches.isEmpty)
             Text(
@@ -648,6 +667,56 @@ class _DeskState extends State<Desk> {
           () => setState(() => limit += 5),
         ),
     ];
+  }
+
+  Widget sourceCoverage(String key, String name, DateTime now) {
+    final snapshot = feed[key];
+    final failed = failedBoards.contains(key);
+    final status = snapshot == null
+        ? (failed
+              ? t('Check nahi ho saka', 'Check failed')
+              : t('Abhi check nahi hua', 'Not checked yet'))
+        : snapshot.expired(now)
+        ? t(
+            '7 din purana: results chhupaye gaye',
+            'At least 7 days old: results hidden',
+          )
+        : failed || snapshot.stale(now)
+        ? t('Cached: dobara check zaroori hai', 'Cached: needs a new check')
+        : t('24 ghanton ke andar check hua', 'Checked within 24 hours');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Semantics(
+        container: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(name + ' — ' + status),
+            if (snapshot != null) ...[
+              Text(
+                t('Aakhri successful check: ', 'Last successful check: ') +
+                    pkt(snapshot.checked) +
+                    ' PKT',
+              ),
+              Text(
+                t(
+                      'Us check mein technical internships: ',
+                      'Technical internships found at that check: ',
+                    ) +
+                    snapshot.listings.length.toString(),
+              ),
+              if (failed)
+                Text(
+                  t(
+                    'Naya check fail hua; purana waqt aur results hi dikh rahe hain.',
+                    'The latest attempt failed; the earlier timestamp and results are retained.',
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   final searchInput = TextEditingController();

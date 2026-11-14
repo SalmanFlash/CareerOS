@@ -2,6 +2,25 @@ import 'package:careeros/discovery.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('cached source ages keep exact visibility boundaries after reload', () {
+    final checked = DateTime.utc(2026, 11, 13);
+    final snapshot = BoardSnapshot.fromJson(
+      BoardSnapshot(checked, []).toJson(),
+    );
+    expect(
+      snapshot.stale(checked.add(const Duration(hours: 23, minutes: 59))),
+      false,
+    );
+    expect(snapshot.stale(checked.add(const Duration(hours: 24))), true);
+    expect(
+      snapshot.expired(
+        checked.add(const Duration(days: 6, hours: 23, minutes: 59)),
+      ),
+      false,
+    );
+    expect(snapshot.expired(checked.add(const Duration(days: 7))), true);
+    expect(snapshot.listings, isEmpty);
+  });
   final job = {
     'id': 123,
     'internal_job_id': 42,

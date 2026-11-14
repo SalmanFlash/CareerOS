@@ -78,6 +78,8 @@ class BoardSnapshot {
   final List<Listing> listings;
   bool stale(DateTime now) =>
       now.difference(checked) >= const Duration(hours: 24);
+  bool expired(DateTime now) =>
+      now.difference(checked) >= const Duration(days: 7);
   Map<String, dynamic> toJson() => {
     'checked': checked.toUtc().toIso8601String(),
     'jobs': listings.map((l) => l.toJson()).toList(),
