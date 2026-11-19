@@ -188,12 +188,23 @@ class Mission {
     this.applicationUpdated = '',
     this.appliedOn = '',
     this.workflow = '',
+    this.completedOn = '',
+    this.reflection = '',
   });
   final String id;
   String day, title, url, state, note;
   String campus, subject, deadline;
   String suggestedDeadline, deadlineEvidence;
   String noticeFingerprint;
+  String completedOn, reflection;
+  void markComplete(String date) {
+    if (!validDay(date)) throw const FormatException();
+    if (state == 'done') return;
+    completedOn = date;
+    step = steps.length - 1;
+    state = 'done';
+  }
+
   final String workflow;
   String get workflowKey =>
       id == 'growth' && workflow.isEmpty ? 'readme' : workflow;
@@ -262,6 +273,8 @@ class Mission {
     'state': state,
     'step': step,
     'note': note,
+    if (completedOn.isNotEmpty) 'completedOn': completedOn,
+    if (reflection.isNotEmpty) 'reflection': reflection,
     if (workflow.isNotEmpty) 'workflow': workflow,
     if (campus.isNotEmpty) 'campus': campus,
     if (subject.isNotEmpty) 'subject': subject,
@@ -283,6 +296,8 @@ class Mission {
     state: m['state'],
     step: m['step'],
     note: m['note'],
+    completedOn: m['completedOn'] ?? '',
+    reflection: m['reflection'] ?? '',
     workflow: m['workflow'] ?? '',
     campus: m['campus'] ?? '',
     subject: m['subject'] ?? '',
@@ -348,6 +363,24 @@ class Plan {
       ...urgent,
       ...available.where((m) => !urgent.contains(m)),
     ].take(exam(day) ? 1 : 3).toList();
+  }
+
+  List<Mission> recentCompletions(String day) {
+    if (!validDay(day)) throw const FormatException();
+    final first = DateTime.parse(
+      day + 'T00:00:00Z',
+    ).subtract(const Duration(days: 6)).toIso8601String().substring(0, 10);
+    return missions
+        .where(
+          (m) =>
+              !m.demo &&
+              m.state == 'done' &&
+              m.completedOn.isNotEmpty &&
+              m.completedOn.compareTo(first) >= 0 &&
+              m.completedOn.compareTo(day) <= 0,
+        )
+        .toList()
+      ..sort((a, b) => b.completedOn.compareTo(a.completedOn));
   }
 
   Mission? find(String id) => missions.where((m) => m.id == id).firstOrNull;

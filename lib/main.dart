@@ -945,7 +945,7 @@ class _DeskState extends State<Desk> {
               } else if (m.step < m.steps.length - 1) {
                 m.step++;
               } else {
-                m.state = 'done';
+                m.markComplete(today);
                 focus = null;
                 tab = 3;
               }
@@ -968,6 +968,7 @@ class _DeskState extends State<Desk> {
     const SizedBox(height: 8),
     heading('Progress'),
     const SizedBox(height: 18),
+    weeklyReview(),
     panel([
       eyebrow(t('Mukammal missions', 'Completed missions')),
       heading(
@@ -1013,7 +1014,23 @@ class _DeskState extends State<Desk> {
         eyebrow((m.demo ? 'DEMO   /   ' : '') + stateName(m)),
         titleText(word(m.label)),
         if (m.campus.isNotEmpty) universitySource(m),
-        Text(m.day + '   ·   PKT'),
+        Text(t('Plan ki tareekh: ', 'Planned for: ') + m.day + ' PKT'),
+        if (m.state == 'done')
+          Text(
+            m.completedOn.isEmpty
+                ? t(
+                    'Completion ki tareekh record nahi hui.',
+                    'Completion date was not recorded.',
+                  )
+                : t('Complete mark kiya: ', 'Marked complete: ') +
+                      m.completedOn +
+                      ' PKT',
+          ),
+        if (m.reflection.isNotEmpty)
+          SelectableText(
+            t('Meri seekh / agla qadam: ', 'My reflection / next step: ') +
+                m.reflection,
+          ),
         if (m.note.isNotEmpty) SelectableText(m.note),
         if (m.tracked) ...[
           Text(
@@ -1035,6 +1052,11 @@ class _DeskState extends State<Desk> {
         ],
         Wrap(
           children: [
+            if (m.state == 'done')
+              link(
+                t('Seekh likho', 'Add reflection'),
+                () => reflectionEditor(m),
+              ),
             if (m.isGrowth)
               link(t('Draft kholo', 'Open draft'), () => openGrowth(m)),
             if (m.canTrackApplication)
@@ -1048,7 +1070,8 @@ class _DeskState extends State<Desk> {
               link(t('Notice badlo', 'Edit notice'), () => universityNotice(m))
             else
               link(t('Naam badlo', 'Rename'), () => edit(m)),
-            if (m.state == 'skipped' || m.day.compareTo(today) > 0)
+            if (m.state != 'done' &&
+                (m.state == 'skipped' || m.day.compareTo(today) > 0))
               link(
                 t('Aaj ke liye rakho', 'Plan for today'),
                 () => change(() {
@@ -1061,6 +1084,84 @@ class _DeskState extends State<Desk> {
         ),
       ]),
   ];
+  Widget weeklyReview() {
+    final recent = plan.recentCompletions(today);
+    final unknown = plan.missions
+        .where((m) => !m.demo && m.state == 'done' && m.completedOn.isEmpty)
+        .length;
+    return panel([
+      eyebrow(t('Pichlay 7 din · PKT', 'Last 7 days · PKT')),
+      titleText(
+        recent.length.toString() +
+            t(' missions complete mark kiye', ' missions marked complete'),
+      ),
+      Text(
+        t(
+          'Ye tumhara apna record hai; application submission ya result ka saboot nahi.',
+          'This is your own record, not proof of an application submission or outcome.',
+        ),
+      ),
+      if (unknown > 0)
+        Text(
+          unknown.toString() +
+              t(
+                ' purane completed missions ki tareekh nahi hai; woh is count mein shamil nahi.',
+                ' older completed missions have no recorded date and are excluded from this count.',
+              ),
+        ),
+      if (recent.isEmpty)
+        Text(
+          t(
+            'Ek chhota pending qadam chuno. Exam Mode mein workload kam rakhna theek hai.',
+            'Choose one small pending step. It is fine to keep the workload lighter in Exam Mode.',
+          ),
+        ),
+      Text(
+        plan.followUps(today).length.toString() +
+            t(' follow-ups due hain.', ' follow-ups are due.'),
+      ),
+      link(t('Aaj ka plan kholo', 'Open today'), () => go(0)),
+    ]);
+  }
+
+  Future<void> reflectionEditor(Mission mission) async {
+    final form = GlobalKey<FormState>();
+    var value = mission.reflection;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        scrollable: true,
+        title: Text(t('Meri seekh', 'My reflection')),
+        content: Form(
+          key: form,
+          child: TextFormField(
+            initialValue: value,
+            maxLines: 5,
+            maxLength: 8192,
+            decoration: InputDecoration(
+              labelText: t(
+                'Kya hua, kya seekha, agla chhota qadam? (optional)',
+                'What happened, what did you learn, what is the next small step? (optional)',
+              ),
+            ),
+            onChanged: (v) => value = v,
+            validator: (v) => (v ?? '').length > 8192
+                ? t('Note chhota karo.', 'Shorten this note.')
+                : null,
+          ),
+        ),
+        actions: [
+          link(t('Wapas', 'Cancel'), () => Navigator.pop(ctx, false)),
+          button(t('Save karo', 'Save reflection'), () {
+            if (form.currentState!.validate()) Navigator.pop(ctx, true);
+          }),
+        ],
+      ),
+    );
+    if (ok == true && mounted && value.length <= 8192)
+      change(() => mission.reflection = value);
+  }
+
   Future<void> applicationEditor(Mission mission) async {
     final form = GlobalKey<FormState>();
     var stage = mission.applicationStage.isEmpty

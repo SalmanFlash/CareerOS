@@ -21,6 +21,8 @@ const _fields = {
   'applicationUpdated',
   'appliedOn',
   'workflow',
+  'completedOn',
+  'reflection',
 };
 
 bool _date(String value, {bool optional = false}) =>
@@ -87,6 +89,10 @@ Plan readBackup(String text) {
         m['step'] >= Mission.read(m).steps.length)
       throw const FormatException();
     final mission = Mission.read(m);
+    if (!_date(mission.completedOn, optional: true) ||
+        (mission.state != 'done' &&
+            (mission.completedOn.isNotEmpty || mission.reflection.isNotEmpty)))
+      throw const FormatException();
     if (!{'', ...applicationStages.keys}.contains(mission.applicationStage) ||
         !_date(mission.followUp, optional: true) ||
         !_date(mission.applicationUpdated, optional: true) ||

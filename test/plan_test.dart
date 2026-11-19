@@ -3,6 +3,39 @@ import 'package:careeros/plan.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test(
+    'weekly completions exclude demos, unknown dates and dates outside the PKT window',
+    () {
+      final p = Plan();
+      for (final pair in [
+        ('first', '2026-11-13'),
+        ('today', '2026-11-19'),
+        ('old', '2026-11-12'),
+        ('future', '2026-11-20'),
+      ]) {
+        final m = Mission(pair.$1, '2026-10-01');
+        m.markComplete(pair.$2);
+        p.missions.add(m);
+      }
+      p.missions.addAll([
+        Mission('legacy', '2026-11-19', state: 'done'),
+        Mission('demo0', '2026-11-19')..markComplete('2026-11-19'),
+      ]);
+      expect(p.recentCompletions('2026-11-19').map((m) => m.id), [
+        'today',
+        'first',
+      ]);
+      final first = p.find('first')!;
+      first.markComplete('2026-11-20');
+      expect(first.completedOn, '2026-11-13');
+      p.find('legacy')!.markComplete('2026-11-19');
+      expect(p.find('legacy')!.completedOn, isEmpty);
+      final pending = Mission('pending', '2026-11-19');
+      expect(() => pending.markComplete('2026-02-30'), throwsFormatException);
+      expect(pending.state, 'planned');
+      expect(Plan.read(p.toJson()).recentCompletions('2026-11-19').length, 2);
+    },
+  );
   const day = '2026-11-04';
   test(
     'growth drafts survive reload, pause for exams and cannot become applications',

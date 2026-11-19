@@ -5,6 +5,27 @@ import 'package:careeros/plan.dart';
 
 void main() {
   test(
+    'completion dates and reflections transfer without inventing legacy dates',
+    () {
+      final m = Mission('completed', '2026-11-01')..markComplete('2026-11-19');
+      m.reflection = 'Tested setup; next improve error messages.';
+      final p = Plan()
+        ..missions.addAll([m, Mission('legacy', '2026-11-01', state: 'done')]);
+      final restored = mergeBackup(Plan(), readBackup(writeBackup(p))).plan;
+      expect(restored.toJson(), p.toJson());
+      expect(restored.find('legacy')!.completedOn, isEmpty);
+      for (final edit in <void Function(Map)>[
+        (m) => m['completedOn'] = '2026-02-30',
+        (m) => m['state'] = 'planned',
+        (m) => m['reflection'] = 'x' * 8193,
+      ]) {
+        final data = jsonDecode(writeBackup(p));
+        edit(data['plan']['missions'][0]);
+        expect(() => readBackup(jsonEncode(data)), throwsFormatException);
+      }
+    },
+  );
+  test(
     'growth backup keeps distinct drafts and rejects invalid workflow combinations',
     () {
       final p = Plan()
