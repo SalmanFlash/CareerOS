@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'plan.dart';
 import 'discovery.dart';
+import 'public_feed.dart';
 import 'backup.dart';
 
 @JS('fetch')
@@ -67,6 +68,8 @@ class _DeskState extends State<Desk> {
   final feed = <String, BoardSnapshot>{};
   final failedBoards = <String>{};
   bool searching = false, pkOnly = false, showCoverage = false;
+  String publicStatus = 'loading';
+  DateTime? publicChecked;
   String query = '';
   int limit = 5;
   DateTime? lastAttempt;
@@ -117,6 +120,7 @@ class _DeskState extends State<Desk> {
       refreshGmail();
     });
     refreshGmail();
+    if (hosted) refreshPublishedFeed();
   }
 
   @override
@@ -492,6 +496,45 @@ class _DeskState extends State<Desk> {
           link(t('Progress dekho', 'View progress'), () => go(3)),
       ]),
   ];
+  Future<void> refreshPublishedFeed() async {
+    try {
+      final options =
+          {
+                'signal': requestTimeout(12000),
+                'credentials': 'omit',
+                'cache': 'no-store',
+              }.jsify()
+              as JSObject;
+      final response = await fetchBoard(
+        'public-opportunities.json'.toJS,
+        options,
+      ).toDart;
+      if (!response.ok) throw const FormatException();
+      final text = (await response.text().toDart).toDart;
+      if (text.length > 4 * 1024 * 1024) throw const FormatException();
+      final incoming = readPublicFeed(
+        jsonDecode(text) as Map,
+        DateTime.now().toUtc(),
+      );
+      if (!mounted) return;
+      setState(() {
+        mergePublicFeed(feed, failedBoards, incoming);
+        publicChecked = incoming.generated;
+        publicStatus = 'loaded';
+      });
+      try {
+        writeStore(
+          'careeros.boards.v1'.toJS,
+          jsonEncode(feed.map((k, v) => MapEntry(k, v.toJson()))).toJS,
+        );
+      } catch (_) {
+        /* Current results remain usable without storage. */
+      }
+    } catch (_) {
+      if (mounted) setState(() => publicStatus = 'unavailable');
+    }
+  }
+
   Future<void> refreshBoards() async {
     if (searching) return;
     final now = DateTime.now().toUtc();
@@ -584,10 +627,42 @@ class _DeskState extends State<Desk> {
         Text(boards.values.join('  ·  ')),
         Text(
           t(
-            'Sirf in paanch boards ki technical internships/co-ops check hoti hain, woh bhi Abhi check karo dabane par. Scholarships, fellowships aur hackathons is feed mein scan nahi hote; unki asli listing khud add kar sakte ho.',
-            'Only technical internships/co-ops on these five boards are checked, when you choose Check now. Scholarships, fellowships and hackathons are not scanned in this feed; you can add their original listings manually.',
+            'Sirf in paanch boards ki technical internships/co-ops check hoti hain. Abhi check karo se naya check kar sakte ho. Scholarships, fellowships aur hackathons is feed mein scan nahi hote; unki asli listing khud add kar sakte ho.',
+            'Only technical internships/co-ops on these five boards are checked. Use Check now for a new check. Scholarships, fellowships and hackathons are not scanned in this feed; you can add their original listings manually.',
           ),
         ),
+        if (hosted)
+          Semantics(
+            container: true,
+            child: Text(
+              publicStatus == 'loading'
+                  ? t(
+                      'Public snapshot load ho raha hai…',
+                      'Loading public snapshot…',
+                    )
+                  : publicStatus == 'unavailable'
+                  ? t(
+                      'Scheduled snapshot nahi mila. Saved results ya Abhi check karo use karo.',
+                      'Scheduled snapshot unavailable. Use saved results or Check now.',
+                    )
+                  : t(
+                          'Public snapshot tayyar hua: ',
+                          'Public snapshot generated: ',
+                        ) +
+                        pkt(publicChecked!) +
+                        t(
+                          ' PKT. Har source ka check waqt neeche hai.',
+                          ' PKT. Each source has its own check time below.',
+                        ),
+            ),
+          ),
+        if (hosted)
+          Text(
+            t(
+              'Public refresh roz do baar schedule hai; delay ya miss ho sakta hai. Ye Gmail ya personal data sync nahi hai.',
+              'Public refresh is scheduled twice daily and may be delayed or missed. This does not sync Gmail or personal data.',
+            ),
+          ),
         link(
           t('Sources ki coverage', 'Source coverage'),
           () => setState(() => showCoverage = !showCoverage),

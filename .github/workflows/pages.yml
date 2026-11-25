@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: '23 3,15 * * *'
 
 permissions:
   contents: read
@@ -31,7 +33,10 @@ jobs:
           flutter test
           node --test test/gmail.test.mjs test/offline.test.mjs test/backup.test.mjs
           flutter build web --release --no-web-resources-cdn --no-wasm-dry-run --pwa-strategy none --base-href /CareerOS/ --dart-define=CAREEROS_HOSTED=true
+          dart run tool/public_feed.dart
           node tool/offline.mjs
+      - name: Bound the short-lived Pages artifact
+        run: test "$(du -sb build/web | cut -f1)" -le 67108864
       - uses: actions/upload-pages-artifact@v4
         with:
           path: build/web

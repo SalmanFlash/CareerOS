@@ -15,9 +15,9 @@ test('packaged offline shell leaves OAuth and private API routes on the network'
   execFileSync(process.execPath,[fileURLToPath(new URL('../tool/offline.mjs',import.meta.url))],{cwd});
   const script=await readFile(join(cwd,'build/web/offline.js'),'utf8');
   assert.ok(!script.includes('.last_build_id'),'Pages does not serve hidden build metadata');
-  const events={};
+  const events={};let online=true;
   runInNewContext(script,{
-    URL,Request, self:{location:{origin:'http://127.0.0.1:4173'},addEventListener:(name,fn)=>events[name]=fn},
+    URL,Request,Response, fetch:async()=>{if(!online)throw Error('offline');return {ok:true,tag:'latest public snapshot'};}, self:{location:{origin:'http://127.0.0.1:4173'},addEventListener:(name,fn)=>events[name]=fn},
     caches:{open:async()=>({match:async()=> 'cached shell'})}
   });
   for(const path of ['/gmail/setup?lang=en','/gmail/callback?code=secret','/api/gmail']){
@@ -28,4 +28,7 @@ test('packaged offline shell leaves OAuth and private API routes on the network'
   let response;
   events.fetch({request:{method:'GET',url:'http://127.0.0.1:4173/',mode:'navigate'},respondWith(promise){response=promise;}});
   assert.equal(await response,'cached shell');
+  const publicRequest={request:{method:'GET',url:'http://127.0.0.1:4173/public-opportunities.json',mode:'cors'},respondWith(promise){response=promise;}};
+  events.fetch(publicRequest);assert.equal((await response).tag,'latest public snapshot');
+  online=false;events.fetch(publicRequest);assert.equal(await response,'cached shell');
 });

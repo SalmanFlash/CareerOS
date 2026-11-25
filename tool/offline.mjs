@@ -35,6 +35,10 @@ self.addEventListener('fetch', event => {
       url.pathname.startsWith('/api/') || url.pathname.startsWith('/gmail/')) return;
   event.respondWith((async()=>{
     const cache = await caches.open(current);
+    if(url.pathname.endsWith('/public-opportunities.json')) {
+      try { const response = await fetch(event.request, {cache:'no-store'}); if(response.ok) return response; } catch (_) {}
+      return await cache.match(event.request, {ignoreSearch:true}) || new Response('', {status:503});
+    }
     return await cache.match(event.request.mode === 'navigate' ? 'index.html' : event.request, {ignoreSearch:true}) || fetch(event.request);
   })());
 });`);
