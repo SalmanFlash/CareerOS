@@ -51,7 +51,9 @@ PublicFeed readPublicFeed(Map data, DateTime now) {
             'source',
           ].any((k) => job[k] is! String || (job[k] as String).length > 8192) ||
           job['source'] != key ||
-          !RegExp('^gh-' + key + r'-\d+$').hasMatch(job['id']) ||
+          !RegExp(
+            (key == 'cern' ? '^sr-' : '^gh-') + key + r'-\d+$',
+          ).hasMatch(job['id']) ||
           !ids.add(job['id']))
         throw const FormatException();
       final uri = Uri.tryParse(job['url']);

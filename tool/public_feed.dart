@@ -32,7 +32,7 @@ Future<PublicFeed> collectPublicFeed(
 ) async {
   final snapshots = <String, BoardSnapshot>{...?previous?.boards};
   final failed = <String>{};
-  // Five bounded, sequential public GETs. No credentials, mail or browser data.
+  // Bounded, sequential public source requests. No credentials, mail or browser data.
   for (final key in boards.keys) {
     try {
       final jobs = parseBoard(key, await fetch(key));
@@ -66,9 +66,7 @@ Future<void> main(List<String> args) async {
   }
   final result = await collectPublicFeed(
     previous,
-    (key) => publicJson(
-      Uri.parse('https://boards-api.greenhouse.io/v1/boards/$key/jobs'),
-    ),
+    (key) => fetchBoardData(key, publicJson),
     now,
   );
   await File(

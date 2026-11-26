@@ -560,20 +560,25 @@ class _DeskState extends State<Desk> {
     await Future.wait(
       boards.keys.map((key) async {
         try {
-          final options =
-              {
-                    'signal': requestTimeout(12000),
-                    'credentials': 'omit',
-                    'cache': 'no-store',
-                    'referrerPolicy': 'no-referrer',
-                  }.jsify()
-                  as JSObject;
-          final response = await fetchBoard(
-            'https://boards-api.greenhouse.io/v1/boards/$key/jobs'.toJS,
-            options,
-          ).toDart;
-          if (!response.ok) throw const FormatException('Board unavailable');
-          final json = jsonDecode((await response.text().toDart).toDart);
+          final json = await fetchBoardData(key, (uri) async {
+            final options =
+                {
+                      'signal': requestTimeout(12000),
+                      'credentials': 'omit',
+                      'cache': 'no-store',
+                      'referrerPolicy': 'no-referrer',
+                    }.jsify()
+                    as JSObject;
+            final response = await fetchBoard(
+              uri.toString().toJS,
+              options,
+            ).toDart;
+            if (!response.ok) throw const FormatException('Source unavailable');
+            final text = (await response.text().toDart).toDart;
+            if (text.length > 4 * 1024 * 1024)
+              throw const FormatException('Source too large');
+            return jsonDecode(text) as Map;
+          });
           final listings = parseBoard(key, json);
           feed[key] = BoardSnapshot(DateTime.now().toUtc(), listings);
         } catch (_) {
@@ -623,12 +628,17 @@ class _DeskState extends State<Desk> {
     return [
       panel([
         eyebrow(t('Official career boards', 'Official career boards')),
-        titleText(t('CS internships dhoondo', 'Find CS internships')),
+        titleText(
+          t(
+            'Internships aur summer research',
+            'Internships and summer research',
+          ),
+        ),
         Text(boards.values.join('  ·  ')),
         Text(
           t(
-            'Sirf in paanch boards ki technical internships/co-ops check hoti hain. Abhi check karo se naya check kar sakte ho. Scholarships, fellowships aur hackathons is feed mein scan nahi hote; unki asli listing khud add kar sakte ho.',
-            'Only technical internships/co-ops on these five boards are checked. Use Check now for a new check. Scholarships, fellowships and hackathons are not scanned in this feed; you can add their original listings manually.',
+            'Paanch employer boards ki technical internships/co-ops aur CERN ke Summer Student programmes check hote hain. Scholarships, doosri fellowships aur hackathons scan nahi hote. Abhi check karo se naya check kar sakte ho.',
+            'Coverage: technical internships/co-ops on five employer boards and CERN Summer Student programmes. Scholarships, other fellowships and hackathons are not scanned. Use Check now for a new check.',
           ),
         ),
         if (hosted)
@@ -813,17 +823,25 @@ class _DeskState extends State<Desk> {
             ? t('Location maloom nahi', 'Location unspecified')
             : job.location,
       ),
-      Text(
-        job.pakistan
-            ? t(
-                'Employer ne Pakistan ki location di hai. Degree aur doosri shartein listing mein check karo.',
-                'The employer lists a Pakistan location. Check degree and other requirements in the listing.',
-              )
-            : t(
-                'Pakistan se apply karne ki ijazat confirm nahi hai. Location aur work authorization listing mein check karo.',
-                'Eligibility from Pakistan is unconfirmed. Check location and work authorization in the listing.',
-              ),
-      ),
+      if (job.source == 'cern')
+        Text(
+          t(
+            'Summer research programme hai; eligibility confirm nahi. Asli listing mein completed semesters, enrolment, pehla CERN experience aur travel/funding ki shartein check karo. Baqi CERN jobs is feed mein shamil nahi.',
+            'Summer research programme; eligibility unconfirmed. Check completed semesters, enrolment, prior CERN experience and travel/funding conditions in the original listing. Other CERN jobs are outside this feed.',
+          ),
+        )
+      else
+        Text(
+          job.pakistan
+              ? t(
+                  'Employer ne Pakistan ki location di hai. Degree aur doosri shartein listing mein check karo.',
+                  'The employer lists a Pakistan location. Check degree and other requirements in the listing.',
+                )
+              : t(
+                  'Pakistan se apply karne ki ijazat confirm nahi hai. Location aur work authorization listing mein check karo.',
+                  'Eligibility from Pakistan is unconfirmed. Check location and work authorization in the listing.',
+                ),
+        ),
       Text(
         t('Deadline: maloom nahi', 'Deadline: unknown') +
             '   ·   ' +

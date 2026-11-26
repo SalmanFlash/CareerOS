@@ -23,7 +23,7 @@ void main() {
       final result = await collectPublicFeed(previous, (key) async {
         calls.add(key);
         if (key == 'careem') throw const FormatException();
-        return {'jobs': []};
+        return key == 'cern' ? {'content': []} : {'jobs': []};
       }, now);
       expect(calls, boards.keys.toList());
       expect(result.failed, {'careem'});

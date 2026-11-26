@@ -4,6 +4,7 @@ const boards = {
   'canonical': 'Canonical',
   'cloudflare': 'Cloudflare',
   'databricks': 'Databricks',
+  'cern': 'CERN Summer Students',
 };
 
 final _internship = RegExp(
@@ -41,6 +42,7 @@ class Listing {
 /// Only structured posting fields are used. Employer boilerplate can mention
 /// countries unrelated to the role, so it is never used to confirm location.
 List<Listing> parseBoard(String source, Map response) {
+  if (source == 'cern') return parseCern(response);
   final jobs = response['jobs'];
   if (jobs is! List) throw const FormatException('Invalid job board');
   final result = <String, Listing>{};
@@ -88,4 +90,80 @@ class BoardSnapshot {
     DateTime.parse(j['checked']),
     (j['jobs'] as List).map((l) => Listing.fromJson(l)).toList(),
   );
+}
+
+/// A partial or changing page set fails; callers keep the previous snapshot.
+Future<Map> fetchBoardData(String source, Future<Map> Function(Uri) get) async {
+  if (!boards.containsKey(source))
+    throw const FormatException('Unknown source');
+  if (source != 'cern') {
+    return get(
+      Uri.parse('https://boards-api.greenhouse.io/v1/boards/$source/jobs'),
+    );
+  }
+  final content = <Map>[];
+  final ids = <String>{};
+  int? total;
+  for (var page = 0; page < 5; page++) {
+    final data = await get(
+      Uri.https('api.smartrecruiters.com', '/v1/companies/CERN/postings', {
+        'destination': 'PUBLIC',
+        'limit': '100',
+        'offset': content.length.toString(),
+      }),
+    );
+    final found = data['totalFound'], items = data['content'];
+    if (found is! int ||
+        found < 0 ||
+        found > 500 ||
+        data['offset'] != content.length ||
+        items is! List ||
+        items.length > 100 ||
+        (total != null && total != found))
+      throw const FormatException('Incomplete source');
+    total = found;
+    for (final item in items) {
+      if (item is! Map || item['id'] is! String || !ids.add(item['id'])) {
+        throw const FormatException('Repeated or invalid source page');
+      }
+      content.add(item);
+    }
+    if (content.length == total) return {'content': content};
+    if (items.isEmpty || content.length > total)
+      throw const FormatException('Incomplete source');
+  }
+  throw const FormatException('Source page limit');
+}
+
+List<Listing> parseCern(Map response) {
+  final content = response['content'];
+  if (content is! List) throw const FormatException('Invalid CERN source');
+  final jobs = <String, Listing>{};
+  for (final item in content) {
+    if (item is! Map) throw const FormatException('Invalid CERN posting');
+    final id = item['id'], title = item['name'];
+    // Graduate/technical/short-term roles have different eligibility policies.
+    if (id is! String ||
+        !RegExp(r'^\d+$').hasMatch(id) ||
+        title is! String ||
+        !RegExp(
+          r'^CERN (OPENLAB )?Summer Student Programme\b',
+          caseSensitive: false,
+        ).hasMatch(title) ||
+        item['visibility'] != 'PUBLIC' ||
+        item['company'] is! Map ||
+        item['company']['identifier'] != 'CERN')
+      continue;
+    final location = item['location'] is Map
+        ? item['location']['fullLocation']
+        : null;
+    jobs[id] = Listing(
+      'sr-cern-$id',
+      title,
+      location is String ? location : '',
+      'https://jobs.smartrecruiters.com/CERN/$id',
+      'cern',
+    );
+  }
+  return jobs.values.toList();
 }
